@@ -16,28 +16,28 @@ func main() {
 	}
 
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TOKEN"))
-    if err != nil {
-        panic(err)
-    }
+	if err != nil {
+		panic(err)
+	}
 
-    bot.Debug = true
+	bot.Debug = true
 
 	updateConfig := tgbotapi.NewUpdate(0)
 	updateConfig.Timeout = 30
 	updates := bot.GetUpdatesChan(updateConfig)
 
 	fmt.Println("Started...")
-	
+
 	for update := range updates {
 
 		if update.Message == nil {
-            continue
-        }
+			continue
+		}
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
 		msg.ReplyToMessageID = update.Message.MessageID
 		if _, err := bot.Send(msg); err != nil {
-            panic(err)
-        }
+			panic(err)
+		}
 	}
 
 }
