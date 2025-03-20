@@ -26,3 +26,7 @@ go.work.sum
 
 # app file
 beroli-bot
+
+# MacOS
+
+.DS_Store
