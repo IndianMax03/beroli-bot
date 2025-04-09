@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	api "github.com/IndianMax03/yandex-tracker-go-client/v3"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -58,7 +58,7 @@ func main() {
 	trackerClient := api.New(YANDEX_API_TOKEN, YANDEX_ORGANIZATION_ID, "", "")
 
 	receiver := NewHandler(repo, trackerClient)
-	invoker := NewInvoker(&receiver)
+	invoker := NewInvoker(receiver)
 
 	bot, err := tgbotapi.NewBotAPI(TELEGRAM_TOKEN)
 	if err != nil {
@@ -77,15 +77,13 @@ func main() {
 		if update.Message == nil || update.Message.Text == "" || update.Message.From.UserName != ALLOWED_USERNAME {
 			continue
 		}
-		result := ""
+		result := "no result"
 
-		text := strings.Split(update.Message.Text, " ")
-		if len(text) == 1 {
-			result = invoker.executeCommand(text[0], "")
-		} else if len(text) == 2 {
-			result = invoker.executeCommand(text[0], text[1])
-		} else {
-			result = "deny"
+		if update.Message.Text != "" {
+			result, err = invoker.executeCommand(update.Message.From.UserName, update.Message.Text)
+			if err != nil {
+				result = fmt.Sprintf("ERROR: %v", err)
+			}
 		}
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, result)

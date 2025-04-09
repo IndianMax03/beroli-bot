@@ -19,7 +19,7 @@ const (
 	NIL_COMMAND_DESCRIPTION = ""
 )
 
-func NewMyIssuesCommand(r *Receiver) *MyIssuesCommand {
+func NewMyIssuesCommand(r Receiver) *MyIssuesCommand {
 	return &MyIssuesCommand{
 		concreteCommand: concreteCommand{
 			commandName:        MY_ISSUES_COMMAND,
@@ -29,7 +29,7 @@ func NewMyIssuesCommand(r *Receiver) *MyIssuesCommand {
 	}
 }
 
-func NewCreateIssueCommand(r *Receiver) *CreateIssueCommand {
+func NewCreateIssueCommand(r Receiver) *CreateIssueCommand {
 	return &CreateIssueCommand{
 		concreteCommand: concreteCommand{
 			commandName:        CREATE_ISSUE_COMMAND,
@@ -39,7 +39,7 @@ func NewCreateIssueCommand(r *Receiver) *CreateIssueCommand {
 	}
 }
 
-func NewDoneCommand(r *Receiver) *DoneCommand {
+func NewDoneCommand(r Receiver) *DoneCommand {
 	return &DoneCommand{
 		concreteCommand: concreteCommand{
 			commandName:        DONE_COMMAND,
@@ -49,7 +49,7 @@ func NewDoneCommand(r *Receiver) *DoneCommand {
 	}
 }
 
-func NewCancelCommand(r *Receiver) *CancelCommand {
+func NewCancelCommand(r Receiver) *CancelCommand {
 	return &CancelCommand{
 		concreteCommand: concreteCommand{
 			commandName:        CANCEL_COMMAND,
@@ -59,7 +59,7 @@ func NewCancelCommand(r *Receiver) *CancelCommand {
 	}
 }
 
-func NewNilCommand(r *Receiver) *NilCommand {
+func NewNilCommand(r Receiver) *NilCommand {
 	return &NilCommand{
 		concreteCommand: concreteCommand{
 			commandName:        NIL_COMMAND,
@@ -70,34 +70,34 @@ func NewNilCommand(r *Receiver) *NilCommand {
 }
 
 type Command interface {
-	execute(string) string
+	execute(string, string, []string) (string, error)
 	GetName() string
 	GetDescription() string
 }
 
 type MyIssuesCommand struct {
 	concreteCommand
-	receiver *Receiver
+	receiver Receiver
 }
 
 type CreateIssueCommand struct {
 	concreteCommand
-	receiver *Receiver
+	receiver Receiver
 }
 
 type DoneCommand struct {
 	concreteCommand
-	receiver *Receiver
+	receiver Receiver
 }
 
 type CancelCommand struct {
 	concreteCommand
-	receiver *Receiver
+	receiver Receiver
 }
 
 type NilCommand struct {
 	concreteCommand
-	receiver *Receiver
+	receiver Receiver
 }
 
 type concreteCommand struct {
@@ -113,22 +113,22 @@ func (c *concreteCommand) GetDescription() string {
 	return fmt.Sprintf("%s -- %s", c.commandName, c.commandDescription)
 }
 
-func (mIC *MyIssuesCommand) execute(text string) string {
-	return (*mIC.receiver).myIssues()
+func (mIC *MyIssuesCommand) execute(username, text string, tags []string) (string, error) {
+	return mIC.receiver.myIssues()
 }
 
-func (cIC *CreateIssueCommand) execute(text string) string {
-	return (*cIC.receiver).createIssue()
+func (cIC *CreateIssueCommand) execute(username, text string, tags []string) (string, error) {
+	return cIC.receiver.createIssue(username, text)
 }
 
-func (dC *DoneCommand) execute(text string) string {
-	return (*dC.receiver).done()
+func (dC *DoneCommand) execute(username, text string, tags []string) (string, error) {
+	return dC.receiver.done()
 }
 
-func (cC *CancelCommand) execute(text string) string {
-	return (*cC.receiver).cancel()
+func (cC *CancelCommand) execute(username, text string, tags []string) (string, error) {
+	return cC.receiver.cancel()
 }
 
-func (nC *NilCommand) execute(text string) string {
-	return (*nC.receiver).noCommand(text)
+func (nC *NilCommand) execute(username, text string, tags []string) (string, error) {
+	return nC.receiver.noCommand(text)
 }
