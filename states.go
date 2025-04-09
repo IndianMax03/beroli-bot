@@ -1,9 +1,9 @@
 package main
 
 const (
-	INITIAL_STATE        = "initial"
+	NIL_STATE            = "nil"
 	CREATING_STATE       = "creating"
 	DONE_STATE           = "done"
 	CANCELED_STATE       = "canceled"
-	ERROR_CREARING_STATE = "error_creating"
+	ERROR_CREATING_STATE = "error_creating"
 )
