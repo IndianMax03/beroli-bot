@@ -37,6 +37,11 @@ func (i *Invoker) executeCommand(username, text string) (string, error) {
 		return "", err
 	}
 
+	err = i.receiver.ValidateAndInitUser(username)
+	if err != nil {
+		return "", err
+	}
+
 	err = i.receiver.ValidateState(username, cmd.GetName())
 	if err != nil {
 		return "", err

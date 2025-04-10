@@ -4,19 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	api "github.com/IndianMax03/yandex-tracker-go-client/v3"
-	"github.com/IndianMax03/yandex-tracker-go-client/v3/model"
 )
 
 type Receiver interface {
-	myIssues() (string, error)
+	myIssues(string) (string, error)
 	createIssue(string, string) (string, error)
-	update() (string, error)
-	done() (string, error)
-	cancel() (string, error)
+	done(string) (string, error)
+	cancel(string) (string, error)
 	noCommand(string) (string, error)
 	ValidateState(string, string) error
+	ValidateAndInitUser(string) error
 }
 
 type Handler struct {
@@ -31,52 +31,92 @@ func NewHandler(repo *MongoRepository, trackerClient *api.Client) Receiver {
 	}
 }
 
-// TODO: temporary solution to check out tracker integration
-func (h Handler) myIssues() (string, error) {
-	issues, _ := h.trackerClient.SearchAllIssues(
-		&model.IssueSearchRequest{
-			Queue: TRACKER_QUEUE,
-		},
-	)
-	result := ""
+func (h Handler) myIssues(username string) (string, error) {
+	ctx := context.Background()
+	issues, err := h.collection.GetIssues(ctx, username)
+	if err != nil {
+		return "", err
+	}
+
+	var b strings.Builder
 	for i, issue := range issues {
-		result += fmt.Sprintf("%v) %s\n", i, issue.Self)
+		b.WriteString(fmt.Sprintf("%v) %s: %s\n", i+1, issue.Key, issue.Link))
+	}
+	result := b.String()
+	if result == "" {
+		result = "Вы ещё не создали ни одной задачи"
 	}
 	return result, nil
 }
 
 func (h Handler) createIssue(username, text string) (string, error) {
 	ctx := context.Background()
-	if err := h.collection.ExistsUser(ctx, username); err != nil {
-		user := User{
-			Username: username,
-			State:    CREATING_STATE,
-		}
-		h.collection.CreateUser(ctx, &user)
-	} else {
-		h.collection.UpdateStateUser(ctx, username, CREATING_STATE)
+
+	if err := h.collection.UpdateStateUser(ctx, username, CREATING_STATE); err != nil {
+		return "", err
 	}
-	return "ok", nil
+
+	if err := h.collection.ClearIssue(ctx, username); err != nil {
+		return "", err
+	}
+
+	return "Можете создавать задачу", nil
 }
 
-func (h Handler) update() (string, error) {
-	return "update stub", nil
+func (h Handler) done(username string) (string, error) {
+	ctx := context.Background()
+
+	user, err := h.collection.GetUser(ctx, username)
+	if err != nil {
+		return "", err
+	}
+
+	err = user.validateRequest()
+	if err != nil {
+		return "", err
+	}
+
+	created, err := h.trackerClient.CreateIssue(user.Issue)
+	if err != nil {
+		return "", err
+	}
+
+	issueData := Issue{
+		Key:  created.Key,
+		Link: created.Self,
+	}
+
+	err = h.collection.AppendDataIssue(ctx, username, &issueData)
+	if err != nil {
+		return "", err
+	}
+
+	err = h.collection.ClearIssue(ctx, username)
+	if err != nil {
+		return "", err
+	}
+
+	err = h.collection.UpdateStateUser(ctx, username, DONE_STATE)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Задача успешно создана: %s", issueData.Link), nil
 }
 
-func (h Handler) done() (string, error) {
-	return "done stub", nil
-}
-
-func (h Handler) cancel() (string, error) {
-	return "cancel stub", nil
+func (h Handler) cancel(username string) (string, error) {
+	ctx := context.Background()
+	if err := h.collection.ClearIssue(ctx, username); err != nil {
+		return "", err
+	}
+	if err := h.collection.UpdateStateUser(ctx, username, CANCELED_STATE); err != nil {
+		return "", err
+	}
+	return "Создание задачи успешно отменено", nil
 }
 
 func (h Handler) noCommand(text string) (string, error) {
-	ctx := context.Background()
-	if err := h.collection.ExistsUser(ctx, text); err != nil {
-		return fmt.Sprintf("%s, not exists. error: %v", text, err), nil
-	}
-	return fmt.Sprintf("%s, exists", text), nil
+	return "no command stub", nil
 }
 
 var (
@@ -84,6 +124,19 @@ var (
 	ErrCreatingStarted    = errors.New("creating started")
 	ErrCreatingInError    = errors.New("creating in error")
 )
+
+func (h Handler) ValidateAndInitUser(username string) error {
+	ctx := context.Background()
+	if err := h.collection.ExistsUser(ctx, username); err != nil {
+		user := User{
+			Username: username,
+			State:    NIL_STATE,
+			Issues:   []Issue{},
+		}
+		h.collection.CreateUser(ctx, &user)
+	}
+	return nil
+}
 
 func (h Handler) ValidateState(username, cmdName string) error {
 	ctx := context.Background()
@@ -104,12 +157,6 @@ func (h Handler) ValidateState(username, cmdName string) error {
 			return nil
 		} else {
 			return ErrCreatingStarted
-		}
-	case ERROR_CREATING_STATE:
-		if cmdName == MY_ISSUES_COMMAND || cmdName == CANCEL_COMMAND || cmdName == NIL_COMMAND {
-			return nil
-		} else {
-			return ErrCreatingInError
 		}
 	}
 

@@ -114,7 +114,7 @@ func (c *concreteCommand) GetDescription() string {
 }
 
 func (mIC *MyIssuesCommand) execute(username, text string, tags []string) (string, error) {
-	return mIC.receiver.myIssues()
+	return mIC.receiver.myIssues(username)
 }
 
 func (cIC *CreateIssueCommand) execute(username, text string, tags []string) (string, error) {
@@ -122,11 +122,11 @@ func (cIC *CreateIssueCommand) execute(username, text string, tags []string) (st
 }
 
 func (dC *DoneCommand) execute(username, text string, tags []string) (string, error) {
-	return dC.receiver.done()
+	return dC.receiver.done(username)
 }
 
 func (cC *CancelCommand) execute(username, text string, tags []string) (string, error) {
-	return cC.receiver.cancel()
+	return cC.receiver.cancel(username)
 }
 
 func (nC *NilCommand) execute(username, text string, tags []string) (string, error) {
