@@ -95,3 +95,51 @@ func (c *Collection) GetStateUser(ctx context.Context, username string) (string,
 	}
 	return u.State, nil
 }
+
+func (c *Collection) ClearIssue(ctx context.Context, username string) error {
+	filter := bson.M{
+		USERNAME_FIELD: bson.M{
+			"$eq": username,
+		},
+	}
+	update := bson.M{
+		"$set": bson.M{
+			ISSUE_FIELD: NewDefaultIssue(),
+		},
+	}
+	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+}
+
+func (c *Collection) AppendDataIssue(ctx context.Context, username string, data *Issue) error {
+	filter := bson.M{
+		USERNAME_FIELD: bson.M{
+			"$eq": username,
+		},
+	}
+	update := bson.M{
+		"$push": bson.M{
+			ISSUES_FIELD: data,
+		},
+	}
+	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+}
+
+func (c *Collection) GetIssues(ctx context.Context, username string) ([]Issue, error) {
+	filter := bson.M{
+		USERNAME_FIELD: bson.M{
+			"$eq": username,
+		},
+	}
+	opt := options.FindOneOptions{
+		Projection: bson.M{
+			ISSUES_FIELD: 1,
+		},
+	}
+	var u User
+	err := c.collection.FindOne(ctx, filter, &opt).Decode(&u)
+	if err != nil {
+		return nil, err
+	}
+
+	return u.Issues, nil
+}
