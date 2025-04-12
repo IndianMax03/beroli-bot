@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/IndianMax03/yandex-tracker-go-client/v3/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -142,4 +143,24 @@ func (c *Collection) GetIssues(ctx context.Context, username string) ([]Issue, e
 	}
 
 	return u.Issues, nil
+}
+
+func (c *Collection) GetIssue(ctx context.Context, username string) (*model.IssueCreateRequest, error) {
+	filter := bson.M{
+		USERNAME_FIELD: bson.M{
+			"$eq": username,
+		},
+	}
+	opt := options.FindOneOptions{
+		Projection: bson.M{
+			ISSUE_FIELD: 1,
+		},
+	}
+	var u User
+	err := c.collection.FindOne(ctx, filter, &opt).Decode(&u)
+	if err != nil {
+		return nil, err
+	}
+
+	return u.Issue, nil
 }
