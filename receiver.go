@@ -15,6 +15,8 @@ type Receiver interface {
 	done(string) (string, error)
 	cancel(string) (string, error)
 	noCommand(string) (string, error)
+	helpCommand(map[string]Command) (string, error)
+	stateCommand(string, map[string]Command) (string, error)
 	ValidateState(string, string) error
 	ValidateAndInitUser(string) error
 }
@@ -83,7 +85,7 @@ func (h Handler) done(username string) (string, error) {
 
 	issueData := Issue{
 		Key:  created.Key,
-		Link: created.Self,
+		Link: NewIssueLink(created.Key),
 	}
 
 	err = h.collection.AppendDataIssue(ctx, username, &issueData)
@@ -119,10 +121,67 @@ func (h Handler) noCommand(text string) (string, error) {
 	return "no command stub", nil
 }
 
+func (h Handler) helpCommand(commandMap map[string]Command) (string, error) {
+	var b strings.Builder
+	for name, cmd := range commandMap {
+		if name != "" {
+			b.WriteString(fmt.Sprintf("%s\n", cmd.GetDescription()))
+		}
+	}
+	result := b.String()
+	if result == "" {
+		result = "Ни одной команды не зарегестрировано"
+	}
+	return result, nil
+}
+
+func (h Handler) stateCommand(username string, commandMap map[string]Command) (string, error) {
+	ctx := context.Background()
+	state, err := h.collection.GetStateUser(ctx, username)
+	if err != nil {
+		return "", err
+	}
+
+	var b strings.Builder
+
+	b.WriteString(fmt.Sprintf("@%s, ваш контекст: \n", username))
+
+	stateDescr, err := GetLocalizedStateDescription(state)
+	if err != nil {
+		return "", err
+	}
+	b.WriteString(fmt.Sprintf("Состояние: '%s' \n", stateDescr))
+
+	issues, err := h.collection.GetIssues(ctx, username)
+	if err != nil {
+		return "", err
+	}
+	b.WriteString(fmt.Sprintf("Вы создали: %v задач \n", len(issues)))
+
+	b.WriteString("Доступные команды:\n")
+	for name, cmd := range commandMap {
+		if name != "" {
+			if h.ValidateState(username, name) == nil {
+				b.WriteString(fmt.Sprintf("- %s\n", cmd.GetDescription()))
+			}
+		}
+	}
+
+	if state == CREATING_STATE {
+		b.WriteString("\n--- Наполнение задачи ---\n\n")
+		issue, err := h.collection.GetIssue(ctx, username)
+		if err != nil {
+			return "", err
+		}
+		b.WriteString(GetLocalizedIssueFilling(issue))
+	}
+
+	return b.String(), nil
+}
+
 var (
-	ErrCreatingNotStarted = errors.New("creating not started")
-	ErrCreatingStarted    = errors.New("creating started")
-	ErrCreatingInError    = errors.New("creating in error")
+	ErrCreatingNotStarted = errors.New("вы еще не начали создание задачи")
+	ErrCreatingStarted    = errors.New("вы уже начали создание задачи")
 )
 
 func (h Handler) ValidateAndInitUser(username string) error {
@@ -147,13 +206,13 @@ func (h Handler) ValidateState(username, cmdName string) error {
 
 	switch state {
 	case NIL_STATE, DONE_STATE, CANCELED_STATE:
-		if cmdName == MY_ISSUES_COMMAND || cmdName == CREATE_ISSUE_COMMAND {
+		if cmdName == MY_ISSUES_COMMAND || cmdName == CREATE_ISSUE_COMMAND || cmdName == HELP_COMMAND || cmdName == STATE_COMMAND {
 			return nil
 		} else {
 			return ErrCreatingNotStarted
 		}
 	case CREATING_STATE:
-		if cmdName == MY_ISSUES_COMMAND || cmdName == DONE_COMMAND || cmdName == CANCEL_COMMAND || cmdName == NIL_COMMAND {
+		if cmdName == MY_ISSUES_COMMAND || cmdName == DONE_COMMAND || cmdName == CANCEL_COMMAND || cmdName == NIL_COMMAND || cmdName == HELP_COMMAND || cmdName == STATE_COMMAND {
 			return nil
 		} else {
 			return ErrCreatingStarted

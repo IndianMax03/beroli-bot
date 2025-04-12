@@ -17,6 +17,12 @@ const (
 
 	NIL_COMMAND             = ""
 	NIL_COMMAND_DESCRIPTION = ""
+
+	HELP_COMMAND             = "/help"
+	HELP_COMMAND_DESCRIPTION = "получить справку по командам"
+
+	STATE_COMMAND             = "/state"
+	STATE_COMMAND_DESCRIPTION = "узнать текущий контекст"
 )
 
 func NewMyIssuesCommand(r Receiver) *MyIssuesCommand {
@@ -69,6 +75,28 @@ func NewNilCommand(r Receiver) *NilCommand {
 	}
 }
 
+func NewHelpCommand(r Receiver, commandMap map[string]Command) *HelpCommand {
+	return &HelpCommand{
+		concreteCommand: concreteCommand{
+			commandName:        HELP_COMMAND,
+			commandDescription: HELP_COMMAND_DESCRIPTION,
+		},
+		receiver:   r,
+		commandMap: commandMap,
+	}
+}
+
+func NewStateCommand(r Receiver, commandMap map[string]Command) *StateCommand {
+	return &StateCommand{
+		concreteCommand: concreteCommand{
+			commandName:        STATE_COMMAND,
+			commandDescription: STATE_COMMAND_DESCRIPTION,
+		},
+		receiver:   r,
+		commandMap: commandMap,
+	}
+}
+
 type Command interface {
 	execute(string, string, []string) (string, error)
 	GetName() string
@@ -98,6 +126,18 @@ type CancelCommand struct {
 type NilCommand struct {
 	concreteCommand
 	receiver Receiver
+}
+
+type HelpCommand struct {
+	concreteCommand
+	receiver   Receiver
+	commandMap map[string]Command
+}
+
+type StateCommand struct {
+	concreteCommand
+	receiver   Receiver
+	commandMap map[string]Command
 }
 
 type concreteCommand struct {
@@ -131,4 +171,12 @@ func (cC *CancelCommand) execute(username, text string, tags []string) (string, 
 
 func (nC *NilCommand) execute(username, text string, tags []string) (string, error) {
 	return nC.receiver.noCommand(text)
+}
+
+func (hC *HelpCommand) execute(username, text string, tags []string) (string, error) {
+	return hC.receiver.helpCommand(hC.commandMap)
+}
+
+func (sC *StateCommand) execute(username, text string, tags []string) (string, error) {
+	return sC.receiver.stateCommand(username, sC.commandMap)
 }

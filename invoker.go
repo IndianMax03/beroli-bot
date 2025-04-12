@@ -19,6 +19,8 @@ func NewInvoker(r Receiver) *Invoker {
 		CANCEL_COMMAND:       NewCancelCommand(r),
 		NIL_COMMAND:          NewNilCommand(r),
 	}
+	commandMap[STATE_COMMAND] = NewStateCommand(r, commandMap)
+	commandMap[HELP_COMMAND] = NewHelpCommand(r, commandMap)
 	return &Invoker{
 		receiver: r,
 		commands: commandMap,
