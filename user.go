@@ -54,7 +54,6 @@ func NewIssueLink(key string) string {
 
 func NewDefaultIssue() *model.IssueCreateRequest {
 	return &model.IssueCreateRequest{
-		Summary: "Проверка ссылки",
 		Queue: model.Queue{
 			Key: TRACKER_QUEUE,
 		},
