@@ -59,6 +59,7 @@ func main() {
 
 	receiver := NewHandler(repo, trackerClient)
 	invoker := NewInvoker(receiver)
+	numericKeyboard := NewNumericKeyboard()
 
 	bot, err := tgbotapi.NewBotAPI(TELEGRAM_TOKEN)
 	if err != nil {
@@ -82,11 +83,12 @@ func main() {
 		if update.Message.Text != "" {
 			result, err = invoker.executeCommand(update.Message.From.UserName, update.Message.Text)
 			if err != nil {
-				result = fmt.Sprintf("ERROR: %v", err)
+				result = fmt.Sprintf("Ошибка: %v", err)
 			}
 		}
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, result)
+		msg.ReplyMarkup = numericKeyboard
 		msg.ReplyToMessageID = update.Message.MessageID
 		if _, err := bot.Send(msg); err != nil {
 			panic(err)
