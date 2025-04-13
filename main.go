@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+
 	"fmt"
 	"log"
 	"os"
@@ -21,6 +22,12 @@ var (
 	MONGO_COLLECTION_NAME  string
 	TRACKER_QUEUE          string
 )
+
+var bot *tgbotapi.BotAPI
+
+func GetFile(fileConfig *tgbotapi.FileConfig) (tgbotapi.File, error) {
+	return bot.GetFile(*fileConfig)
+}
 
 func loadEnvs() (bool, error) {
 	err := env.Load()
@@ -57,34 +64,32 @@ func main() {
 
 	trackerClient := api.New(YANDEX_API_TOKEN, YANDEX_ORGANIZATION_ID, "", "")
 
-	receiver := NewHandler(repo, trackerClient)
-	invoker := NewInvoker(receiver)
-	numericKeyboard := NewNumericKeyboard()
-
-	bot, err := tgbotapi.NewBotAPI(TELEGRAM_TOKEN)
+	bot, err = tgbotapi.NewBotAPI(TELEGRAM_TOKEN)
 	if err != nil {
 		panic(err)
 	}
 	bot.Debug = true
+
+	receiver := NewHandler(repo, trackerClient, bot.Token)
+	invoker := NewInvoker(receiver)
+	numericKeyboard := NewNumericKeyboard()
+
 	updateConfig := tgbotapi.NewUpdate(0)
 	updateConfig.Timeout = 30
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
 	updates := bot.GetUpdatesChan(updateConfig)
+	var result string
 
 	for update := range updates {
 
-		if update.Message == nil || update.Message.Text == "" || update.Message.From.UserName != ALLOWED_USERNAME {
-			continue
+		username, text, fileID, err := ParseMessage(update.Message)
+		if err == nil {
+			result, err = invoker.executeCommand(username, text, fileID)
 		}
-		result := "no result"
-
-		if update.Message.Text != "" {
-			result, err = invoker.executeCommand(update.Message.From.UserName, update.Message.Text)
-			if err != nil {
-				result = fmt.Sprintf("Ошибка: %v", err)
-			}
+		if err != nil {
+			result = fmt.Sprintf("Ошибка: %v", err)
 		}
 
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, result)

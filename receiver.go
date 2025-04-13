@@ -4,17 +4,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"regexp"
 	"strings"
 
 	api "github.com/IndianMax03/yandex-tracker-go-client/v3"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"resty.dev/v3"
+)
+
+var (
+	ErrEmptyTag        = errors.New("не указан тэг")
+	ErrEmptyAttachment = errors.New("вложение не представлено")
 )
 
 type Receiver interface {
 	myIssues(string) (string, error)
-	createIssue(string, string) (string, error)
+	createIssue(string, string, map[string]Command) (string, error)
 	done(string) (string, error)
 	cancel(string) (string, error)
-	noCommand(string) (string, error)
+	noCommand(string, string, string, tgbotapi.FileID) (string, error)
 	helpCommand(map[string]Command) (string, error)
 	stateCommand(string, map[string]Command) (string, error)
 	ValidateState(string, string) error
@@ -24,12 +33,14 @@ type Receiver interface {
 type Handler struct {
 	collection    *Collection
 	trackerClient *api.Client
+	botToken      string
 }
 
-func NewHandler(repo *MongoRepository, trackerClient *api.Client) Receiver {
+func NewHandler(repo *MongoRepository, trackerClient *api.Client, botToken string) Receiver {
 	return Handler{
 		collection:    NewCollection(*repo),
 		trackerClient: trackerClient,
+		botToken:      botToken,
 	}
 }
 
@@ -41,17 +52,18 @@ func (h Handler) myIssues(username string) (string, error) {
 	}
 
 	var b strings.Builder
+	b.WriteString("Ваши задачи:\n")
 	for i, issue := range issues {
 		b.WriteString(fmt.Sprintf("%v) %s: %s\n", i+1, issue.Key, issue.Link))
 	}
 	result := b.String()
-	if result == "" {
-		result = "Вы ещё не создали ни одной задачи"
+	if len(issues) == 0 {
+		result = "Вы ещё не создали ни одной задачи."
 	}
 	return result, nil
 }
 
-func (h Handler) createIssue(username, text string) (string, error) {
+func (h Handler) createIssue(username, text string, commandMap map[string]Command) (string, error) {
 	ctx := context.Background()
 
 	if err := h.collection.UpdateStateUser(ctx, username, CREATING_STATE); err != nil {
@@ -62,7 +74,22 @@ func (h Handler) createIssue(username, text string) (string, error) {
 		return "", err
 	}
 
-	return "Можете создавать задачу", nil
+	var b strings.Builder
+
+	b.WriteString("Теперь вы можете создавать задачу.\n\n")
+	b.WriteString("Используйте тэги для наполнения:\n")
+	b.WriteString("\n--- Наполнение задачи ---\n\n")
+	issue, err := h.collection.GetIssue(ctx, username)
+	if err != nil {
+		return "", err
+	}
+	b.WriteString(GetLocalizedIssueFilling(issue))
+	b.WriteString("\n-------------------------\n\n")
+	b.WriteString(fmt.Sprintf("Для проверки состояния, используйте:\n%s\n\n", commandMap[STATE_COMMAND].GetDescription()))
+	b.WriteString(fmt.Sprintf("Когда будете готовы, используйте:\n%s\n\n", commandMap[DONE_COMMAND].GetDescription()))
+	b.WriteString(fmt.Sprintf("Если передумаете, используйте:\n%s\n\n", commandMap[CANCEL_COMMAND].GetDescription()))
+
+	return b.String(), nil
 }
 
 func (h Handler) done(username string) (string, error) {
@@ -76,6 +103,58 @@ func (h Handler) done(username string) (string, error) {
 	err = user.validateRequest()
 	if err != nil {
 		return "", err
+	}
+
+	if len(user.Issue.AttachmentIds) > 0 {
+		var newAttachmentIDs []string
+		for _, fileID := range user.Issue.AttachmentIds {
+			fileConfig := tgbotapi.FileConfig{FileID: fileID}
+			file, err := GetFile(&fileConfig)
+			if err != nil {
+				return "", err
+			}
+			fileURL := "https://api.telegram.org/file/bot" + h.botToken + "/" + file.FilePath
+			resp, err := http.Get(fileURL)
+			if err != nil {
+				return "", err
+			}
+			res, err := h.trackerClient.UploadTemporaryAttachment(&resty.MultipartField{
+				Reader:   resp.Body,
+				FileName: strings.Split(file.FilePath, "/")[1],
+			})
+			if err != nil {
+				return "", err
+			}
+			newAttachmentIDs = append(newAttachmentIDs, res.ID)
+		}
+		user.Issue.AttachmentIds = newAttachmentIDs
+	}
+
+	if len(user.Issue.DescriptionAttachmentIds) > 0 {
+		var newDescriptionAttachmentIDs []string
+		for _, fileID := range user.Issue.DescriptionAttachmentIds {
+			fileConfig := tgbotapi.FileConfig{FileID: fileID}
+			file, err := GetFile(&fileConfig)
+			if err != nil {
+				return "", err
+			}
+			fileURL := "https://api.telegram.org/file/bot" + h.botToken + "/" + file.FilePath
+			resp, err := http.Get(fileURL)
+			if err != nil {
+				return "", err
+			}
+			res, err := h.trackerClient.UploadTemporaryAttachment(&resty.MultipartField{
+				Reader:   resp.Body,
+				FileName: strings.Split(file.FilePath, "/")[1],
+			})
+			if err != nil {
+				return "", err
+			}
+			newDescriptionAttachmentIDs = append(newDescriptionAttachmentIDs, res.ID)
+			user.Issue.Description += fmt.Sprintf("\n\n<img src=\"/ajax/v2/attachments/%s?inline=true\" width=\"500\" />", res.ID)
+			// user.Issue.Description += fmt.Sprintf("\n![%s](/ajax/v2/attachments/%v?inline=true)", res.Name, res.ID)
+		}
+		user.Issue.DescriptionAttachmentIds = newDescriptionAttachmentIDs
 	}
 
 	created, err := h.trackerClient.CreateIssue(user.Issue)
@@ -117,8 +196,50 @@ func (h Handler) cancel(username string) (string, error) {
 	return "Создание задачи успешно отменено", nil
 }
 
-func (h Handler) noCommand(text string) (string, error) {
-	return "no command stub", nil
+func (h Handler) noCommand(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+	if tag == "" {
+		return "", ErrEmptyTag
+	}
+	var err error
+	ctx := context.Background()
+
+	switch tag {
+	case ISSUE_SUMMARY_TAG:
+		err = h.collection.UpdateSummaryIssue(ctx, username, text)
+	case ISSUE_DESCRIPTION_TAG:
+		err = h.collection.UpdateDescriptionIssue(ctx, username, text)
+	case ISSUE_ATTACHMENT_TAG:
+		if fileID != "" {
+			err = h.collection.AppendAttachmentIssue(ctx, username, string(fileID))
+		} else {
+			err = ErrEmptyAttachment
+		}
+	case ISSUE_DESCRIPTION_ATTACHMENT_TAG:
+		if fileID != "" {
+			err = h.collection.AppendDescriptionAttachmentIssue(ctx, username, string(fileID))
+		} else {
+			err = ErrEmptyAttachment
+		}
+	case ISSUE_TAGS_TAG:
+		re := regexp.MustCompile(`[,\s.;]+`)
+		replaced := re.ReplaceAllString(text, " ")
+		rawTags := strings.Split(replaced, " ")
+		tags := make([]string, 0, len(rawTags))
+
+		for _, tag := range rawTags {
+			tag = strings.TrimSpace(tag)
+			if tag != "" {
+				tags = append(tags, tag)
+			}
+		}
+		err = h.collection.AppendTagIssue(ctx, username, tags)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Успешно обновил %s", LocalizedTagsDescriptionMap[tag]), nil
 }
 
 func (h Handler) helpCommand(commandMap map[string]Command) (string, error) {
@@ -174,6 +295,7 @@ func (h Handler) stateCommand(username string, commandMap map[string]Command) (s
 			return "", err
 		}
 		b.WriteString(GetLocalizedIssueFilling(issue))
+		b.WriteString("\n-------------------------")
 	}
 
 	return b.String(), nil

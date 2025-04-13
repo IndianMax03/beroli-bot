@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+)
 
 const (
 	MY_ISSUES_COMMAND             = "/my_issues"
@@ -35,13 +39,14 @@ func NewMyIssuesCommand(r Receiver) *MyIssuesCommand {
 	}
 }
 
-func NewCreateIssueCommand(r Receiver) *CreateIssueCommand {
+func NewCreateIssueCommand(r Receiver, commandMap map[string]Command) *CreateIssueCommand {
 	return &CreateIssueCommand{
 		concreteCommand: concreteCommand{
 			commandName:        CREATE_ISSUE_COMMAND,
 			commandDescription: CREATE_ISSUE_COMMAND_DESCRIPTION,
 		},
-		receiver: r,
+		receiver:   r,
+		commandMap: commandMap,
 	}
 }
 
@@ -98,7 +103,7 @@ func NewStateCommand(r Receiver, commandMap map[string]Command) *StateCommand {
 }
 
 type Command interface {
-	execute(string, string, []string) (string, error)
+	execute(string, string, string, tgbotapi.FileID) (string, error)
 	GetName() string
 	GetDescription() string
 }
@@ -110,7 +115,8 @@ type MyIssuesCommand struct {
 
 type CreateIssueCommand struct {
 	concreteCommand
-	receiver Receiver
+	receiver   Receiver
+	commandMap map[string]Command
 }
 
 type DoneCommand struct {
@@ -153,30 +159,30 @@ func (c *concreteCommand) GetDescription() string {
 	return fmt.Sprintf("%s -- %s", c.commandName, c.commandDescription)
 }
 
-func (mIC *MyIssuesCommand) execute(username, text string, tags []string) (string, error) {
+func (mIC *MyIssuesCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	return mIC.receiver.myIssues(username)
 }
 
-func (cIC *CreateIssueCommand) execute(username, text string, tags []string) (string, error) {
-	return cIC.receiver.createIssue(username, text)
+func (cIC *CreateIssueCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+	return cIC.receiver.createIssue(username, text, cIC.commandMap)
 }
 
-func (dC *DoneCommand) execute(username, text string, tags []string) (string, error) {
+func (dC *DoneCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	return dC.receiver.done(username)
 }
 
-func (cC *CancelCommand) execute(username, text string, tags []string) (string, error) {
+func (cC *CancelCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	return cC.receiver.cancel(username)
 }
 
-func (nC *NilCommand) execute(username, text string, tags []string) (string, error) {
-	return nC.receiver.noCommand(text)
+func (nC *NilCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+	return nC.receiver.noCommand(username, text, tag, fileID)
 }
 
-func (hC *HelpCommand) execute(username, text string, tags []string) (string, error) {
+func (hC *HelpCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	return hC.receiver.helpCommand(hC.commandMap)
 }
 
-func (sC *StateCommand) execute(username, text string, tags []string) (string, error) {
+func (sC *StateCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	return sC.receiver.stateCommand(username, sC.commandMap)
 }
