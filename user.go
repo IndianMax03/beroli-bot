@@ -9,11 +9,16 @@ import (
 )
 
 const (
-	USERNAME_FIELD      = "username"
-	STATE_FIELD         = "state"
-	ISSUE_FIELD         = "issue"
-	ISSUES_FIELD        = "issues"
-	TRACKER_DEFAULT_URL = "https://tracker.yandex.ru/"
+	USERNAME_FIELD                      = "username"
+	STATE_FIELD                         = "state"
+	ISSUE_FIELD                         = "issue"
+	ISSUE_SUMMARY_FIELD                 = ISSUE_FIELD + "." + "summary"
+	ISSUE_DESCRIPTION_FIELD             = ISSUE_FIELD + "." + "description"
+	ISSUE_ATTACHMENTS_FIELD             = ISSUE_FIELD + "." + "attachmentids"
+	ISSUE_DESCRIPTION_ATTACHMENTS_FIELD = ISSUE_FIELD + "." + "descriptionattachmentids"
+	ISSUE_TAGS_FIELD                    = ISSUE_FIELD + "." + "tags"
+	ISSUES_FIELD                        = "issues"
+	TRACKER_DEFAULT_URL                 = "https://tracker.yandex.ru/"
 
 	ISSUE_SUMMARY_TAG                = "#sum"
 	ISSUE_DESCRIPTION_TAG            = "#des"
@@ -23,7 +28,7 @@ const (
 )
 
 var (
-	ErrMandatoryIsRequired = errors.New("mandatory fields is required")
+	ErrMandatoryIsRequired = errors.New("обязательные поля не заполнены")
 )
 
 var (
