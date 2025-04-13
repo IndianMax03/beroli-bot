@@ -9,7 +9,7 @@ const (
 	CANCELED_STATE = "canceled"
 )
 
-var ErrStateNotExists = errors.New("state not exists")
+var ErrStateNotExists = errors.New("неизвестное состояние пользователя")
 
 var localizedStatesDescriptionMap = map[string]string{
 	NIL_STATE:      "отсутствует",
