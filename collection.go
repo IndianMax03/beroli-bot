@@ -164,3 +164,77 @@ func (c *Collection) GetIssue(ctx context.Context, username string) (*model.Issu
 
 	return u.Issue, nil
 }
+
+func (c *Collection) UpdateSummaryIssue(ctx context.Context, username, text string) error {
+	filter := bson.M{
+		USERNAME_FIELD: bson.M{
+			"$eq": username,
+		},
+	}
+	update := bson.M{
+		"$set": bson.M{
+			ISSUE_SUMMARY_FIELD: text,
+		},
+	}
+	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+}
+
+func (c *Collection) UpdateDescriptionIssue(ctx context.Context, username, text string) error {
+	filter := bson.M{
+		USERNAME_FIELD: bson.M{
+			"$eq": username,
+		},
+	}
+	update := bson.M{
+		"$set": bson.M{
+			ISSUE_DESCRIPTION_FIELD: text,
+		},
+	}
+	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+}
+
+func (c *Collection) AppendAttachmentIssue(ctx context.Context, username string, attachmentID string) error {
+	filter := bson.M{
+		USERNAME_FIELD: bson.M{
+			"$eq": username,
+		},
+	}
+	update := bson.M{
+		"$push": bson.M{
+			ISSUE_ATTACHMENTS_FIELD: attachmentID,
+		},
+	}
+	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+}
+
+func (c *Collection) AppendDescriptionAttachmentIssue(ctx context.Context, username string, descriptionAttachmentID string) error {
+	filter := bson.M{
+		USERNAME_FIELD: bson.M{
+			"$eq": username,
+		},
+	}
+	update := bson.M{
+		"$push": bson.M{
+			ISSUE_DESCRIPTION_ATTACHMENTS_FIELD: descriptionAttachmentID,
+		},
+	}
+	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+}
+
+func (c *Collection) AppendTagIssue(ctx context.Context, username string, tags []string) error {
+	filter := bson.M{
+		USERNAME_FIELD: bson.M{
+			"$eq": username,
+		},
+	}
+	update := bson.M{
+		"$push": bson.M{
+			ISSUE_TAGS_FIELD: bson.M{
+				"$each": tags,
+			},
+		},
+	}
+
+	_, err := c.collection.UpdateOne(ctx, filter, update)
+	return err
+}
