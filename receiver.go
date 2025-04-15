@@ -21,7 +21,7 @@ var (
 type Receiver interface {
 	myIssues(string) (string, error)
 	createIssue(string, string, map[string]Command) (string, error)
-	done(string) (string, error)
+	done(context.Context, string) (string, error)
 	cancel(string) (string, error)
 	noCommand(string, string, string, tgbotapi.FileID) (string, error)
 	helpCommand(map[string]Command) (string, error)
@@ -33,14 +33,12 @@ type Receiver interface {
 type Handler struct {
 	collection    *Collection
 	trackerClient *api.Client
-	botToken      string
 }
 
-func NewHandler(repo *MongoRepository, trackerClient *api.Client, botToken string) Receiver {
+func NewHandler(repo *MongoRepository, trackerClient *api.Client) Receiver {
 	return Handler{
 		collection:    NewCollection(*repo),
 		trackerClient: trackerClient,
-		botToken:      botToken,
 	}
 }
 
@@ -92,10 +90,10 @@ func (h Handler) createIssue(username, text string, commandMap map[string]Comman
 	return b.String(), nil
 }
 
-func (h Handler) done(username string) (string, error) {
-	ctx := context.Background()
+func (h Handler) done(ctx context.Context, username string) (string, error) {
+	dbCtx := context.Background()
 
-	user, err := h.collection.GetUser(ctx, username)
+	user, err := h.collection.GetUser(dbCtx, username)
 	if err != nil {
 		return "", err
 	}
@@ -105,84 +103,9 @@ func (h Handler) done(username string) (string, error) {
 		return "", err
 	}
 
-	if len(user.Issue.AttachmentIds) > 0 {
-		var newAttachmentIDs []string
-		for _, fileID := range user.Issue.AttachmentIds {
-			fileConfig := tgbotapi.FileConfig{FileID: fileID}
-			file, err := GetFile(&fileConfig)
-			if err != nil {
-				return "", err
-			}
-			fileURL := "https://api.telegram.org/file/bot" + h.botToken + "/" + file.FilePath
-			resp, err := http.Get(fileURL)
-			if err != nil {
-				return "", err
-			}
-			res, err := h.trackerClient.UploadTemporaryAttachment(&resty.MultipartField{
-				Reader:   resp.Body,
-				FileName: strings.Split(file.FilePath, "/")[1],
-			})
-			if err != nil {
-				return "", err
-			}
-			newAttachmentIDs = append(newAttachmentIDs, res.ID)
-		}
-		user.Issue.AttachmentIds = newAttachmentIDs
-	}
+	go h.createIssueRoutine(ctx, dbCtx, user)
 
-	if len(user.Issue.DescriptionAttachmentIds) > 0 {
-		var newDescriptionAttachmentIDs []string
-		for _, fileID := range user.Issue.DescriptionAttachmentIds {
-			fileConfig := tgbotapi.FileConfig{FileID: fileID}
-			file, err := GetFile(&fileConfig)
-			if err != nil {
-				return "", err
-			}
-			fileURL := "https://api.telegram.org/file/bot" + h.botToken + "/" + file.FilePath
-			resp, err := http.Get(fileURL)
-			if err != nil {
-				return "", err
-			}
-			res, err := h.trackerClient.UploadTemporaryAttachment(&resty.MultipartField{
-				Reader:   resp.Body,
-				FileName: strings.Split(file.FilePath, "/")[1],
-			})
-			if err != nil {
-				return "", err
-			}
-			newDescriptionAttachmentIDs = append(newDescriptionAttachmentIDs, res.ID)
-			user.Issue.Description += fmt.Sprintf("\n\n<img src=\"/ajax/v2/attachments/%s?inline=true\" width=\"500\" />", res.ID)
-			// user.Issue.Description += fmt.Sprintf("\n![%s](/ajax/v2/attachments/%v?inline=true)", res.Name, res.ID)
-		}
-		user.Issue.DescriptionAttachmentIds = newDescriptionAttachmentIDs
-	}
-
-	created, err := h.trackerClient.CreateIssue(user.Issue)
-	if err != nil {
-		return "", err
-	}
-
-	issueData := Issue{
-		Key:  created.Key,
-		Link: NewIssueLink(created.Key),
-	}
-
-	err = h.collection.AppendDataIssue(ctx, username, &issueData)
-	if err != nil {
-		return "", err
-	}
-
-	err = h.collection.ClearIssue(ctx, username)
-	if err != nil {
-		return "", err
-	}
-
-	err = h.collection.UpdateStateUser(ctx, username, DONE_STATE)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("Задача успешно создана: %s", issueData.Link), nil
+	return "Я начал создание задачи, когда будет готово, я отпишусь.", nil
 }
 
 func (h Handler) cancel(username string) (string, error) {
@@ -341,5 +264,126 @@ func (h Handler) ValidateState(username, cmdName string) error {
 		}
 	}
 
+	return nil
+}
+
+func (h Handler) createIssueRoutine(goroCtx context.Context, dbCtx context.Context, user *User) {
+	messageID, err := getContextMessageID(goroCtx)
+	if err != nil {
+		panic(err)
+	}
+	chatID, err := getContextChatID(goroCtx)
+	if err != nil {
+		panic(err)
+	}
+	delayedMessage := DelayedMessage{
+		messageID: messageID,
+		chatID:    chatID,
+	}
+
+	err = h.uploadAttachments(user)
+	if err != nil {
+		delayedMessage.err = err
+		delayQueue <- delayedMessage
+	}
+
+	err = h.uploadDescriptionAttachments(user)
+	if err != nil {
+		delayedMessage.err = err
+		delayQueue <- delayedMessage
+	}
+
+	created, err := h.trackerClient.CreateIssue(user.Issue)
+	if err != nil {
+		delayedMessage.err = err
+		delayQueue <- delayedMessage
+	}
+
+	issueData := Issue{
+		Key:  created.Key,
+		Link: NewIssueLink(created.Key),
+	}
+
+	err = h.collection.AppendDataIssue(dbCtx, user.Username, &issueData)
+	if err != nil {
+		delayedMessage.err = err
+		delayQueue <- delayedMessage
+	}
+
+	err = h.collection.ClearIssue(dbCtx, user.Username)
+	if err != nil {
+		delayedMessage.err = err
+		delayQueue <- delayedMessage
+	}
+
+	err = h.collection.UpdateStateUser(dbCtx, user.Username, DONE_STATE)
+	if err != nil {
+		delayedMessage.err = err
+		delayQueue <- delayedMessage
+	}
+
+	delayedMessage.result = fmt.Sprintf("Задача успешно создана: %s", issueData.Link)
+	delayQueue <- delayedMessage
+}
+
+func (h Handler) uploadAttachments(user *User) error {
+	if len(user.Issue.AttachmentIds) > 0 {
+		var newAttachmentIDs []string
+		for _, fileID := range user.Issue.AttachmentIds {
+			fileConfig := tgbotapi.FileConfig{FileID: fileID}
+			file, err := getFileByConfig(&fileConfig)
+			if err != nil {
+				return err
+			}
+			fileURL := getFileURLByPath(file.FilePath)
+			resp, err := http.Get(fileURL)
+			if err != nil {
+				return err
+			}
+			res, err := h.trackerClient.UploadTemporaryAttachment(&resty.MultipartField{
+				Reader:   resp.Body,
+				FileName: strings.Split(file.FilePath, "/")[1],
+			})
+			if err != nil {
+				return err
+			}
+			newAttachmentIDs = append(newAttachmentIDs, res.ID)
+		}
+		user.Issue.AttachmentIds = newAttachmentIDs
+	}
+	return nil
+}
+
+func (h Handler) uploadDescriptionAttachments(user *User) error {
+	if len(user.Issue.DescriptionAttachmentIds) > 0 {
+		var newDescriptionAttachmentIDs []string
+		for _, fileID := range user.Issue.DescriptionAttachmentIds {
+			fileConfig := tgbotapi.FileConfig{FileID: fileID}
+			file, err := getFileByConfig(&fileConfig)
+			if err != nil {
+				return err
+			}
+			fileURL := getFileURLByPath(file.FilePath)
+			resp, err := http.Get(fileURL)
+			if err != nil {
+				return err
+			}
+			filename := strings.Split(file.FilePath, "/")[1]
+			res, err := h.trackerClient.UploadTemporaryAttachment(&resty.MultipartField{
+				Reader:   resp.Body,
+				FileName: filename,
+			})
+			if err != nil {
+				return err
+			}
+			newDescriptionAttachmentIDs = append(newDescriptionAttachmentIDs, res.ID)
+			if strings.HasSuffix(res.Name, ".svg") {
+				user.Issue.Description += fmt.Sprintf("\n\n[%s](/ajax/v2/attachments/%s)", res.Name, res.ID)
+			} else {
+				user.Issue.Description += fmt.Sprintf("\n\n![%s](/ajax/v2/attachments/%s?inline=true =250x250)", res.Name, res.ID)
+			}
+		}
+		user.Issue.DescriptionAttachmentIds = newDescriptionAttachmentIDs
+	}
 	return nil
 }

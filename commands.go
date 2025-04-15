@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -103,7 +104,7 @@ func NewStateCommand(r Receiver, commandMap map[string]Command) *StateCommand {
 }
 
 type Command interface {
-	execute(string, string, string, tgbotapi.FileID) (string, error)
+	execute(context.Context, string, string, string, tgbotapi.FileID) (string, error)
 	GetName() string
 	GetDescription() string
 }
@@ -159,30 +160,30 @@ func (c *concreteCommand) GetDescription() string {
 	return fmt.Sprintf("%s -- %s", c.commandName, c.commandDescription)
 }
 
-func (mIC *MyIssuesCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+func (mIC *MyIssuesCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	return mIC.receiver.myIssues(username)
 }
 
-func (cIC *CreateIssueCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+func (cIC *CreateIssueCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	return cIC.receiver.createIssue(username, text, cIC.commandMap)
 }
 
-func (dC *DoneCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
-	return dC.receiver.done(username)
+func (dC *DoneCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+	return dC.receiver.done(ctx, username)
 }
 
-func (cC *CancelCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+func (cC *CancelCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	return cC.receiver.cancel(username)
 }
 
-func (nC *NilCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+func (nC *NilCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	return nC.receiver.noCommand(username, text, tag, fileID)
 }
 
-func (hC *HelpCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+func (hC *HelpCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	return hC.receiver.helpCommand(hC.commandMap)
 }
 
-func (sC *StateCommand) execute(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+func (sC *StateCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	return sC.receiver.stateCommand(username, sC.commandMap)
 }

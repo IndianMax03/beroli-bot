@@ -3,7 +3,7 @@ package main
 import "strings"
 
 const MAX_STRING_LENGHT = 30
-const MAX_ARRAY_LENGHT = 2
+const MAX_ARRAY_LENGHT = 5
 
 func CutString(s string) string {
 	runes := []rune(s)

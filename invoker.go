@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -36,7 +37,7 @@ type Invoker struct {
 	commands map[string]Command
 }
 
-func (i *Invoker) executeCommand(username, text string, fileID tgbotapi.FileID) (string, error) {
+func (i *Invoker) executeCommand(ctx context.Context, username, text string, fileID tgbotapi.FileID) (string, error) {
 
 	cmd, text, tag, err := parseCommand(text, i)
 	if err != nil {
@@ -53,7 +54,7 @@ func (i *Invoker) executeCommand(username, text string, fileID tgbotapi.FileID) 
 		return "", err
 	}
 
-	return cmd.execute(username, text, tag, fileID)
+	return cmd.execute(ctx, username, text, tag, fileID)
 }
 
 func parseCommand(body string, i *Invoker) (cmd Command, text string, tag string, err error) {

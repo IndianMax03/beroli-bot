@@ -2,12 +2,9 @@ package main
 
 import (
 	"context"
-
-	"fmt"
 	"log"
 	"os"
 
-	api "github.com/IndianMax03/yandex-tracker-go-client/v3"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	env "github.com/joho/godotenv"
 )
@@ -23,17 +20,10 @@ var (
 	TRACKER_QUEUE          string
 )
 
-var bot *tgbotapi.BotAPI
-
-func GetFile(fileConfig *tgbotapi.FileConfig) (tgbotapi.File, error) {
-	return bot.GetFile(*fileConfig)
-}
-
-func loadEnvs() (bool, error) {
+func loadEnvs() error {
 	err := env.Load()
 	if err != nil {
-		log.Fatal("Can't find .env file")
-		return false, err
+		return err
 	}
 	TELEGRAM_TOKEN = os.Getenv("TELEGRAM_TOKEN")
 	YANDEX_API_TOKEN = os.Getenv("YANDEX_API_TOKEN")
@@ -43,11 +33,14 @@ func loadEnvs() (bool, error) {
 	MONGO_DB_NAME = os.Getenv("MONGO_DB_NAME")
 	MONGO_COLLECTION_NAME = os.Getenv("MONGO_COLLECTION_NAME")
 	TRACKER_QUEUE = os.Getenv("TRACKER_QUEUE")
-	return true, nil
+	return nil
 }
 
 func main() {
-	loadEnvs()
+	err := loadEnvs()
+	if err != nil {
+		panic(err)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -62,17 +55,9 @@ func main() {
 		}
 	}()
 
-	trackerClient := api.New(YANDEX_API_TOKEN, YANDEX_ORGANIZATION_ID, "", "")
+	initEntities(repo)
 
-	bot, err = tgbotapi.NewBotAPI(TELEGRAM_TOKEN)
-	if err != nil {
-		panic(err)
-	}
-	bot.Debug = true
-
-	receiver := NewHandler(repo, trackerClient, bot.Token)
-	invoker := NewInvoker(receiver)
-	numericKeyboard := NewNumericKeyboard()
+	bot := WithDebug(NewBot())
 
 	updateConfig := tgbotapi.NewUpdate(0)
 	updateConfig.Timeout = 30
@@ -80,24 +65,11 @@ func main() {
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
 	updates := bot.GetUpdatesChan(updateConfig)
-	var result string
+
+	go delayedMessagesDaemon()
 
 	for update := range updates {
-
-		username, text, fileID, err := ParseMessage(update.Message)
-		if err == nil {
-			result, err = invoker.executeCommand(username, text, fileID)
-		}
-		if err != nil {
-			result = fmt.Sprintf("Ошибка: %v", err)
-		}
-
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, result)
-		msg.ReplyMarkup = numericKeyboard
-		msg.ReplyToMessageID = update.Message.MessageID
-		if _, err := bot.Send(msg); err != nil {
-			panic(err)
-		}
+		go runUpdate(update)
 	}
 
 }
