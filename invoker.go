@@ -82,8 +82,8 @@ func parseCommand(body string, i *Invoker) (cmd Command, text string, tag string
 					b.WriteString(" ")
 				}
 				b.WriteString(word)
+				it++
 			}
-			it++
 		}
 	}
 	if cmd == nil {
