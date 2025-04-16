@@ -96,14 +96,14 @@ func GetLocalizedIssueFilling(issue *model.IssueCreateRequest) string {
 
 	b.WriteString(fmt.Sprintf("%s - %s\n", ISSUE_ATTACHMENT_TAG, LocalizedTagsDescriptionMap[ISSUE_ATTACHMENT_TAG]))
 	if len(issue.AttachmentIds) > 0 {
-		b.WriteString(fmt.Sprintf("%s\n", CutArrayOfString(issue.AttachmentIds)))
+		b.WriteString(fmt.Sprintf("%v вложений к задаче\n", len(issue.AttachmentIds)))
 	} else {
 		b.WriteString("Отсутствуют\n")
 	}
 
 	b.WriteString(fmt.Sprintf("%s - %s\n", ISSUE_DESCRIPTION_ATTACHMENT_TAG, LocalizedTagsDescriptionMap[ISSUE_DESCRIPTION_ATTACHMENT_TAG]))
 	if len(issue.DescriptionAttachmentIds) > 0 {
-		b.WriteString(fmt.Sprintf("%s\n", CutArrayOfString(issue.DescriptionAttachmentIds)))
+		b.WriteString(fmt.Sprintf("%v вложений к описанию\n", len(issue.DescriptionAttachmentIds)))
 	} else {
 		b.WriteString("Отсутствуют\n")
 	}
