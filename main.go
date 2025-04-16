@@ -66,7 +66,7 @@ func main() {
 
 	updates := bot.GetUpdatesChan(updateConfig)
 
-	go delayedMessagesDaemon()
+	go preliminaryMessagesDaemon()
 
 	for update := range updates {
 		go runUpdate(update)

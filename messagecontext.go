@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-var delayQueue = make(chan DelayedMessage, 100)
+var preliminaryQueue = make(chan PreliminaryMessage, 100)
 
 type contextKey string
 
@@ -19,7 +19,7 @@ var (
 var messageIDKey = contextKey("messageID")
 var chatIDKey = contextKey("chatID")
 
-type DelayedMessage struct {
+type PreliminaryMessage struct {
 	chatID    int64
 	messageID int
 	result    string

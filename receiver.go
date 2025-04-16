@@ -103,9 +103,14 @@ func (h Handler) done(ctx context.Context, username string) (string, error) {
 		return "", err
 	}
 
-	go h.createIssueRoutine(ctx, dbCtx, user)
+	sendPreliminaryMessagesWithContext(ctx, "Я начал создание задачи, по готовности отпишусь.", nil)
 
-	return "Я начал создание задачи, когда будет готово, я отпишусь.", nil
+	issueData, err := h.createTrackerIssue(dbCtx, user)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("Задача успешно создана: %s", issueData.Link), nil
 }
 
 func (h Handler) cancel(username string) (string, error) {
@@ -267,36 +272,21 @@ func (h Handler) ValidateState(username, cmdName string) error {
 	return nil
 }
 
-func (h Handler) createIssueRoutine(goroCtx context.Context, dbCtx context.Context, user *User) {
-	messageID, err := getContextMessageID(goroCtx)
-	if err != nil {
-		panic(err)
-	}
-	chatID, err := getContextChatID(goroCtx)
-	if err != nil {
-		panic(err)
-	}
-	delayedMessage := DelayedMessage{
-		messageID: messageID,
-		chatID:    chatID,
-	}
+func (h Handler) createTrackerIssue(dbCtx context.Context, user *User) (*Issue, error) {
 
-	err = h.uploadAttachments(user)
+	err := h.uploadAttachments(user)
 	if err != nil {
-		delayedMessage.err = err
-		delayQueue <- delayedMessage
+		return nil, err
 	}
 
 	err = h.uploadDescriptionAttachments(user)
 	if err != nil {
-		delayedMessage.err = err
-		delayQueue <- delayedMessage
+		return nil, err
 	}
 
 	created, err := h.trackerClient.CreateIssue(user.Issue)
 	if err != nil {
-		delayedMessage.err = err
-		delayQueue <- delayedMessage
+		return nil, err
 	}
 
 	issueData := Issue{
@@ -306,24 +296,20 @@ func (h Handler) createIssueRoutine(goroCtx context.Context, dbCtx context.Conte
 
 	err = h.collection.AppendDataIssue(dbCtx, user.Username, &issueData)
 	if err != nil {
-		delayedMessage.err = err
-		delayQueue <- delayedMessage
+		return nil, err
 	}
 
 	err = h.collection.ClearIssue(dbCtx, user.Username)
 	if err != nil {
-		delayedMessage.err = err
-		delayQueue <- delayedMessage
+		return nil, err
 	}
 
 	err = h.collection.UpdateStateUser(dbCtx, user.Username, DONE_STATE)
 	if err != nil {
-		delayedMessage.err = err
-		delayQueue <- delayedMessage
+		return nil, err
 	}
 
-	delayedMessage.result = fmt.Sprintf("Задача успешно создана: %s", issueData.Link)
-	delayQueue <- delayedMessage
+	return &issueData, nil
 }
 
 func (h Handler) uploadAttachments(user *User) error {
