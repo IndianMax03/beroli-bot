@@ -81,7 +81,11 @@ func parseCommand(body string, i *Invoker) (cmd Command, text string, tag string
 				if it > 0 {
 					b.WriteString(" ")
 				}
-				b.WriteString(word)
+				if word == "" {
+					b.WriteString("\n")
+				} else {
+					b.WriteString(word)
+				}
 				it++
 			}
 		}
