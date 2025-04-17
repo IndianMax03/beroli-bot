@@ -22,7 +22,13 @@ func NewConnection(ctx context.Context) (*MongoRepository, error) {
 	connectCtx, cancel := context.WithTimeout(ctx, connectionTimeout)
 	defer cancel()
 
-	mongoClient, err := mongo.Connect(connectCtx, options.Client().ApplyURI(MONGO_URL))
+	clientOptions := options.Client().ApplyURI(MONGO_URL)
+	clientOptions.SetAuth(options.Credential{
+		Username: MONGO_USER,
+		Password: MONGO_PASSWORD,
+	})
+
+	mongoClient, err := mongo.Connect(connectCtx, clientOptions)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,8 @@ var (
 	MONGO_DB_NAME          string
 	MONGO_COLLECTION_NAME  string
 	TRACKER_QUEUE          string
+	MONGO_USER             string
+	MONGO_PASSWORD         string
 )
 
 func loadEnvs() error {
@@ -33,6 +35,8 @@ func loadEnvs() error {
 	MONGO_DB_NAME = os.Getenv("MONGO_DB_NAME")
 	MONGO_COLLECTION_NAME = os.Getenv("MONGO_COLLECTION_NAME")
 	TRACKER_QUEUE = os.Getenv("TRACKER_QUEUE")
+	MONGO_USER = os.Getenv("MONGO_USER")
+	MONGO_PASSWORD = os.Getenv("MONGO_PASSWORD")
 	return nil
 }
 
