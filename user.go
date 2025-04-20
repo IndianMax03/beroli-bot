@@ -25,6 +25,9 @@ const (
 	ISSUE_ATTACHMENT_TAG             = "#att"
 	ISSUE_DESCRIPTION_ATTACHMENT_TAG = "#datt"
 	ISSUE_TAGS_TAG                   = "#tags"
+
+	DEFAULT_ISSUE_TYPE     = "bug"
+	DEFAULT_ISSUE_PRIORITY = model.CriticalPriority
 )
 
 var (
@@ -62,8 +65,8 @@ func NewDefaultIssue() *model.IssueCreateRequest {
 		Queue: model.Queue{
 			Key: TRACKER_QUEUE,
 		},
-		Type:                     "bug",
-		Priority:                 model.CriticalPriority,
+		Type:                     DEFAULT_ISSUE_TYPE,
+		Priority:                 DEFAULT_ISSUE_PRIORITY,
 		AttachmentIds:            []string{},
 		DescriptionAttachmentIds: []string{},
 		Tags:                     []string{},
