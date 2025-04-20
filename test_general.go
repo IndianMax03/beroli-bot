@@ -24,6 +24,11 @@ type InputStringWantString struct {
 	Want  string
 }
 
+type InputStringWantError struct {
+	Input string
+	Error error
+}
+
 type InputArrayOfStringWantString struct {
 	Input []string
 	Want  string
