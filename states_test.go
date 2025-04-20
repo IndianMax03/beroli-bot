@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func genratePositiveCasesGetLocalizedStateDescription() []InputStringWantString {
+func generatePositiveCasesGetLocalizedStateDescription() []InputStringWantString {
 	cases := []InputStringWantString{
 		{
 			Input: NIL_STATE,
@@ -28,7 +28,7 @@ func genratePositiveCasesGetLocalizedStateDescription() []InputStringWantString 
 	return cases
 }
 
-func genrateNegativeCasesGetLocalizedStateDescription() []InputStringWantError {
+func generateNegativeCasesGetLocalizedStateDescription() []InputStringWantError {
 	cases := []InputStringWantError{
 		{
 			Input: "",
@@ -44,7 +44,7 @@ func genrateNegativeCasesGetLocalizedStateDescription() []InputStringWantError {
 }
 
 func TestGetLocalizedStateDescriptionPositive(t *testing.T) {
-	tests := genratePositiveCasesGetLocalizedStateDescription()
+	tests := generatePositiveCasesGetLocalizedStateDescription()
 	for _, test := range tests {
 		name := fmt.Sprintf("CASE:'%s'->'%s'", test.Input, test.Want)
 		t.Run(name, func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestGetLocalizedStateDescriptionPositive(t *testing.T) {
 }
 
 func TestGetLocalizedStateDescriptionNegative(t *testing.T) {
-	tests := genrateNegativeCasesGetLocalizedStateDescription()
+	tests := generateNegativeCasesGetLocalizedStateDescription()
 	for _, test := range tests {
 		name := fmt.Sprintf("CASE:'%s'->'%v'", test.Input, test.Error)
 		t.Run(name, func(t *testing.T) {
