@@ -28,7 +28,7 @@ func sendMessage(chatID int64, messageID int, result string) {
 	}
 }
 
-func sendPreliminaryMessagesWithContext(ctx context.Context, result string, err error) {
+func sendPreliminaryMessagesWithContext(ctx context.Context, result string, restultErr error) {
 	go func() {
 		messageID, err := getContextMessageID(ctx)
 		if err != nil {
@@ -42,7 +42,7 @@ func sendPreliminaryMessagesWithContext(ctx context.Context, result string, err 
 			chatID:    chatID,
 			messageID: messageID,
 			result:    result,
-			err:       err,
+			err:       restultErr,
 		}
 		preliminaryQueue <- preliminaryMessage
 	}()
