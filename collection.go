@@ -5,12 +5,11 @@ import (
 
 	"github.com/IndianMax03/yandex-tracker-go-client/v3/model"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Collection struct {
-	collection *mongo.Collection
+	collection MongoCollection
 }
 
 func NewCollection(repo MongoRepository) *Collection {
