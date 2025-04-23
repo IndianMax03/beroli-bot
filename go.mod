@@ -8,6 +8,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/stretchr/testify v1.10.0
 	go.mongodb.org/mongo-driver v1.17.3
+	go.uber.org/mock v0.5.1
 	resty.dev/v3 v3.0.0-beta.2
 )
 
