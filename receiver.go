@@ -31,8 +31,8 @@ type Receiver interface {
 }
 
 type Handler struct {
-	collection    *Collection
-	trackerClient *api.Client
+	collection    CollectionService
+	trackerClient YandexTrackerService
 }
 
 func NewHandler(repo *MongoRepository, trackerClient *api.Client) Receiver {
