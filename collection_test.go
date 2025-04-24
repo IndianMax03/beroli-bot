@@ -43,10 +43,6 @@ type userMatcher struct {
 	want *User
 }
 
-type issueMatcher struct {
-	want *Issue
-}
-
 func (m userMatcher) Matches(other interface{}) bool {
 	usr, ok := other.(*User)
 	if !ok {
