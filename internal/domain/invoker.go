@@ -1,4 +1,4 @@
-package main
+package domain
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	
 )
 
 var (
@@ -15,6 +16,12 @@ var (
 	ErrMultiplyTags   = errors.New("не могу распознать несколько тэгов в одном сообщении")
 	ErrUnknownTag     = errors.New("неизвестный тэг")
 )
+
+
+type Invoker struct {
+	receiver Receiver
+	commands map[string]Command
+}
 
 func NewInvoker(r Receiver) *Invoker {
 	commandMap := map[string]Command{
@@ -32,12 +39,7 @@ func NewInvoker(r Receiver) *Invoker {
 	}
 }
 
-type Invoker struct {
-	receiver Receiver
-	commands map[string]Command
-}
-
-func (i *Invoker) executeCommand(ctx context.Context, username, text string, fileID tgbotapi.FileID) (string, error) {
+func (i *Invoker) ExecuteCommand(ctx context.Context, username, text string, fileID tgbotapi.FileID) (string, error) {
 
 	cmd, text, tag, err := parseCommand(text, i)
 	if err != nil {

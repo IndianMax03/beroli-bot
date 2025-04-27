@@ -1,4 +1,4 @@
-package main
+package infra
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	global "github.com/IndianMax03/beroli-bot/internal/global"
 )
 
 const (
@@ -22,11 +23,13 @@ func NewConnection(ctx context.Context) (*MongoRepository, error) {
 	connectCtx, cancel := context.WithTimeout(ctx, connectionTimeout)
 	defer cancel()
 
-	clientOptions := options.Client().ApplyURI(MONGO_URL)
-	clientOptions.SetAuth(options.Credential{
-		Username: MONGO_USER,
-		Password: MONGO_PASSWORD,
-	})
+	clientOptions := options.Client().ApplyURI(global.MONGO_URL)
+	if global.MONGO_USER != "" && global.MONGO_PASSWORD != "" {
+		clientOptions.SetAuth(options.Credential{
+			Username: global.MONGO_USER,
+			Password: global.MONGO_PASSWORD,
+		})
+	}
 
 	mongoClient, err := mongo.Connect(connectCtx, clientOptions)
 	if err != nil {

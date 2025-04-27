@@ -1,4 +1,4 @@
-package main
+package test
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/IndianMax03/beroli-bot/internal/domain"
 	"github.com/IndianMax03/beroli-bot/mocks"
 	"github.com/IndianMax03/yandex-tracker-go-client/v3/model"
 	"github.com/stretchr/testify/assert"
@@ -15,24 +16,24 @@ import (
 )
 
 var (
-	userStub             = &User{}
+	userStub             = &domain.User{}
 	usernameStub         = "stub"
 	textStub             = "stub"
 	stringArrayStub      = []string{}
-	userWithUsernameStub = &User{
+	userWithUsernameStub = &domain.User{
 		Username: usernameStub,
 	}
-	userWithUsernameAndNilStateStub = &User{
+	userWithUsernameAndNilStateStub = &domain.User{
 		Username: usernameStub,
-		State:    NIL_STATE,
+		State:    domain.NIL_STATE,
 	}
-	userWithIssuesStub = &User{
-		Issues: []Issue{{}, {}},
+	userWithIssuesStub = &domain.User{
+		Issues: []domain.Issue{{}, {}},
 	}
-	userWithIssueCreateRequestStub = &User{
+	userWithIssueCreateRequestStub = &domain.User{
 		Issue: &model.IssueCreateRequest{},
 	}
-	issueStub                              = &Issue{}
+	issueStub                              = &domain.Issue{}
 	errStub                                = errors.New("stub error")
 	userWithUsernameAndNilStateMatcherStub = userMatcher{
 		want: userWithUsernameAndNilStateStub,
@@ -40,11 +41,11 @@ var (
 )
 
 type userMatcher struct {
-	want *User
+	want *domain.User
 }
 
 func (m userMatcher) Matches(other interface{}) bool {
-	usr, ok := other.(*User)
+	usr, ok := other.(*domain.User)
 	if !ok {
 		return false
 	}
@@ -66,7 +67,7 @@ func TestCollectionCreateUser(t *testing.T) {
 		InsertOne(gomock.Any(), userStub).
 		Return(&mongo.InsertOneResult{}, nil)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	collection.CreateUser(context.TODO(), userStub)
 }
 
@@ -81,7 +82,7 @@ func TestCollectionUpdateUserPositive(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), userWithUsernameStub).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.UpdateUser(context.TODO(), userWithUsernameStub)
 	assert.NoError(t, err)
 }
@@ -97,7 +98,7 @@ func TestCollectionUpdateUserNegativeStubError(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), userWithUsernameStub).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.UpdateUser(context.TODO(), userWithUsernameStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -113,7 +114,7 @@ func TestCollectionUpdateUserNegativeErrNilDocument(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), userWithUsernameStub).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.UpdateUser(context.TODO(), userWithUsernameStub)
 	assert.ErrorIs(t, err, mongo.ErrNilDocument)
 }
@@ -129,7 +130,7 @@ func TestCollectionResetUserPositive(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), userWithUsernameAndNilStateMatcherStub).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.ResetUser(context.TODO(), usernameStub)
 	assert.NoError(t, err)
 }
@@ -145,7 +146,7 @@ func TestCollectionResetUserNegativeStubError(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), userWithUsernameAndNilStateMatcherStub).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.ResetUser(context.TODO(), usernameStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -161,7 +162,7 @@ func TestCollectionGetUserPositive(t *testing.T) {
 		FindOne(gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	resultUser, err := collection.GetUser(context.TODO(), usernameStub)
 	assert.NoError(t, err)
 	assert.EqualExportedValues(t, userWithUsernameStub, resultUser)
@@ -178,7 +179,7 @@ func TestCollectionGetUserNegativeStubError(t *testing.T) {
 		FindOne(gomock.Any(), gomock.Any()).
 		Return(mockResultWithErr)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	_, err := collection.GetUser(context.TODO(), usernameStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -194,7 +195,7 @@ func TestCollectionExistsUserPositive(t *testing.T) {
 		FindOne(gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.ExistsUser(context.TODO(), usernameStub)
 	assert.NoError(t, err)
 }
@@ -210,7 +211,7 @@ func TestCollectionExistsUserNegativeStubError(t *testing.T) {
 		FindOne(gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.ExistsUser(context.TODO(), usernameStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -226,8 +227,8 @@ func TestCollectionUpdateStateUserPositive(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
-	err := collection.UpdateStateUser(context.TODO(), usernameStub, CREATING_STATE)
+	collection := &domain.Collection{Collection: mockCollection}
+	err := collection.UpdateStateUser(context.TODO(), usernameStub, domain.CREATING_STATE)
 	assert.NoError(t, err)
 }
 
@@ -242,8 +243,8 @@ func TestCollectionUpdateStateUserNegativeStubError(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
-	err := collection.UpdateStateUser(context.TODO(), usernameStub, CREATING_STATE)
+	collection := &domain.Collection{Collection: mockCollection}
+	err := collection.UpdateStateUser(context.TODO(), usernameStub, domain.CREATING_STATE)
 	assert.ErrorIs(t, err, errStub)
 }
 
@@ -258,7 +259,7 @@ func TestCollectionGetStateUserPositive(t *testing.T) {
 		FindOne(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	state, err := collection.GetStateUser(context.TODO(), usernameStub)
 	assert.NoError(t, err)
 	assert.Equal(t, userWithUsernameAndNilStateStub.State, state)
@@ -275,7 +276,7 @@ func TestCollectionGetStateUserNegativeStubError(t *testing.T) {
 		FindOne(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	_, err := collection.GetStateUser(context.TODO(), usernameStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -291,7 +292,7 @@ func TestCollectionClearIssuePositive(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.ClearIssue(context.TODO(), usernameStub)
 	assert.NoError(t, err)
 }
@@ -307,7 +308,7 @@ func TestCollectionClearIssueNegativeStubError(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.ClearIssue(context.TODO(), usernameStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -323,7 +324,7 @@ func TestCollectionAppendDataIssuePositive(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.AppendDataIssue(context.TODO(), usernameStub, issueStub)
 	assert.NoError(t, err)
 }
@@ -339,7 +340,7 @@ func TestCollectionAppendDataIssueNegativeStubError(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.AppendDataIssue(context.TODO(), usernameStub, issueStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -355,7 +356,7 @@ func TestCollectionGetIssuesPositive(t *testing.T) {
 		FindOne(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	iss, err := collection.GetIssues(context.TODO(), usernameStub)
 	assert.NoError(t, err)
 	assert.Equal(t, userWithIssuesStub.Issues, iss)
@@ -372,7 +373,7 @@ func TestCollectionGetIssuesNegativeStubError(t *testing.T) {
 		FindOne(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	_, err := collection.GetIssues(context.TODO(), usernameStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -388,7 +389,7 @@ func TestCollectionGetIssuePositive(t *testing.T) {
 		FindOne(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	is, err := collection.GetIssue(context.TODO(), usernameStub)
 	assert.NoError(t, err)
 	assert.Equal(t, userWithIssueCreateRequestStub.Issue, is)
@@ -405,7 +406,7 @@ func TestCollectionGetIssueNegativeStubError(t *testing.T) {
 		FindOne(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	_, err := collection.GetIssue(context.TODO(), usernameStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -421,7 +422,7 @@ func TestCollectionUpdateSummaryIssuePositive(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.UpdateSummaryIssue(context.TODO(), usernameStub, textStub)
 	assert.NoError(t, err)
 }
@@ -437,7 +438,7 @@ func TestCollectionUpdateSummaryIssueNegativeErrorStub(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.UpdateSummaryIssue(context.TODO(), usernameStub, textStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -453,7 +454,7 @@ func TestCollectionUpdateDescriptionIssuePositive(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.UpdateDescriptionIssue(context.TODO(), usernameStub, textStub)
 	assert.NoError(t, err)
 }
@@ -469,7 +470,7 @@ func TestCollectionUpdateDescriptionIssueNegativeErrorStub(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.UpdateDescriptionIssue(context.TODO(), usernameStub, textStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -485,7 +486,7 @@ func TestCollectionAppendAttachmentIssuePositive(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.AppendAttachmentIssue(context.TODO(), usernameStub, textStub)
 	assert.NoError(t, err)
 }
@@ -501,7 +502,7 @@ func TestCollectionAppendAttachmentIssueNegativeErrorStub(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.AppendAttachmentIssue(context.TODO(), usernameStub, textStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -517,7 +518,7 @@ func TestCollectionAppendDescriptionAttachmentIssuePositive(t *testing.T) {
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.AppendDescriptionAttachmentIssue(context.TODO(), usernameStub, textStub)
 	assert.NoError(t, err)
 }
@@ -533,7 +534,7 @@ func TestCollectionAppendDescriptionAttachmentIssueNegativeErrorStub(t *testing.
 		FindOneAndUpdate(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.AppendDescriptionAttachmentIssue(context.TODO(), usernameStub, textStub)
 	assert.ErrorIs(t, err, errStub)
 }
@@ -549,7 +550,7 @@ func TestCollectionAppendTagIssuePositive(t *testing.T) {
 		UpdateOne(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(mockResult, nil)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.AppendTagIssue(context.TODO(), usernameStub, stringArrayStub)
 	assert.NoError(t, err)
 }
@@ -564,7 +565,7 @@ func TestCollectionAppendTagIssueNegativeErrorStub(t *testing.T) {
 		UpdateOne(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil, errStub)
 
-	collection := &Collection{collection: mockCollection}
+	collection := &domain.Collection{Collection: mockCollection}
 	err := collection.AppendTagIssue(context.TODO(), usernameStub, stringArrayStub)
 	assert.ErrorIs(t, err, errStub)
 }

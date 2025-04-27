@@ -1,4 +1,4 @@
-package main
+package domain
 
 import (
 	"errors"
@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/IndianMax03/yandex-tracker-go-client/v3/model"
+	global "github.com/IndianMax03/beroli-bot/internal/global"
+	util "github.com/IndianMax03/beroli-bot/internal/util"
 )
 
 const (
@@ -63,7 +65,7 @@ func NewIssueLink(key string) string {
 func NewDefaultIssue() *model.IssueCreateRequest {
 	return &model.IssueCreateRequest{
 		Queue: model.Queue{
-			Key: TRACKER_QUEUE,
+			Key: global.TRACKER_QUEUE,
 		},
 		Type:                     DEFAULT_ISSUE_TYPE,
 		Priority:                 DEFAULT_ISSUE_PRIORITY,
@@ -73,7 +75,7 @@ func NewDefaultIssue() *model.IssueCreateRequest {
 	}
 }
 
-func (u *User) validateRequest() error {
+func (u *User) ValidateRequest() error {
 	if u.Issue.Summary == "" || u.Issue.Queue.Key == "" {
 		return ErrMandatoryIsRequired
 	}
@@ -85,14 +87,14 @@ func GetLocalizedIssueFilling(issue *model.IssueCreateRequest) string {
 
 	b.WriteString(fmt.Sprintf("%s - %s\n", ISSUE_SUMMARY_TAG, LocalizedTagsDescriptionMap[ISSUE_SUMMARY_TAG]))
 	if issue.Summary != "" {
-		b.WriteString(fmt.Sprintf("%s\n", CutString(issue.Summary)))
+		b.WriteString(fmt.Sprintf("%s\n", util.CutString(issue.Summary)))
 	} else {
 		b.WriteString("‼️ Обязательное поле не заполнено ‼️\n")
 	}
 
 	b.WriteString(fmt.Sprintf("%s - %s\n", ISSUE_DESCRIPTION_TAG, LocalizedTagsDescriptionMap[ISSUE_DESCRIPTION_TAG]))
 	if issue.Description != "" {
-		b.WriteString(fmt.Sprintf("%s\n", CutString(issue.Description)))
+		b.WriteString(fmt.Sprintf("%s\n", util.CutString(issue.Description)))
 	} else {
 		b.WriteString("Отсутствует\n")
 	}
@@ -113,7 +115,7 @@ func GetLocalizedIssueFilling(issue *model.IssueCreateRequest) string {
 
 	b.WriteString(fmt.Sprintf("%s - %s\n", ISSUE_TAGS_TAG, LocalizedTagsDescriptionMap[ISSUE_TAGS_TAG]))
 	if len(issue.Tags) > 0 {
-		b.WriteString(fmt.Sprintf("%s\n", CutArrayOfString(issue.Tags)))
+		b.WriteString(fmt.Sprintf("%s\n", util.CutArrayOfString(issue.Tags)))
 	} else {
 		b.WriteString("Отсутствуют\n")
 	}

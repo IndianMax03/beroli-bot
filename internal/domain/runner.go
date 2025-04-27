@@ -1,34 +1,29 @@
-package main
+package domain
 
 import (
 	"context"
 	"fmt"
 	"sync"
 
-	api "github.com/IndianMax03/yandex-tracker-go-client/v3"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	util "github.com/IndianMax03/beroli-bot/internal/util"
+	telegram "github.com/IndianMax03/beroli-bot/internal/telegram"
 )
 
-var invoker *Invoker
+var Inv *Invoker
 var usersLockMap map[string]chan string = make(map[string]chan string)
 var mapLock sync.Mutex
-
-func initEntities(repo *MongoRepository) {
-	trackerClient := api.New(YANDEX_API_TOKEN, YANDEX_ORGANIZATION_ID, "", "")
-	receiver := NewHandler(repo, trackerClient)
-	invoker = NewInvoker(receiver)
-}
 
 func sendMessage(chatID int64, messageID int, result string) {
 	msg := tgbotapi.NewMessage(chatID, result)
 	msg.ReplyMarkup = NumericKeyboard
 	msg.ReplyToMessageID = messageID
-	if _, err := bot.Send(msg); err != nil {
+	if _, err := telegram.Bot.Send(msg); err != nil {
 		panic(err)
 	}
 }
 
-func sendPreliminaryMessagesWithContext(ctx context.Context, result string, restultErr error) {
+func SendPreliminaryMessagesWithContext(ctx context.Context, result string, restultErr error) {
 	go func() {
 		messageID, err := getContextMessageID(ctx)
 		if err != nil {
@@ -48,7 +43,7 @@ func sendPreliminaryMessagesWithContext(ctx context.Context, result string, rest
 	}()
 }
 
-func preliminaryMessagesDaemon() {
+func PreliminaryMessagesDaemon() {
 	var result string
 	for pm := range preliminaryQueue {
 		go func() {
@@ -62,7 +57,7 @@ func preliminaryMessagesDaemon() {
 	}
 }
 
-func runUpdate(update tgbotapi.Update) {
+func RunUpdate(update tgbotapi.Update) {
 	if update.Message.Text == "" && update.Message.Caption == "" {
 		return
 	}
@@ -71,7 +66,7 @@ func runUpdate(update tgbotapi.Update) {
 	ctx = setContextChatID(ctx, update.Message.Chat.ID)
 	var result string
 
-	username, text, fileID, err := ParseMessage(update.Message)
+	username, text, fileID, err := util.ParseMessage(update.Message)
 	if err == nil {
 		mapLock.Lock()
 		if _, ok := usersLockMap[username]; !ok {
@@ -80,7 +75,7 @@ func runUpdate(update tgbotapi.Update) {
 		}
 		mapLock.Unlock()
 		<-usersLockMap[username]
-		result, err = invoker.executeCommand(ctx, username, text, fileID)
+		result, err = Inv.ExecuteCommand(ctx, username, text, fileID)
 		usersLockMap[username] <- username
 	}
 	if err != nil {

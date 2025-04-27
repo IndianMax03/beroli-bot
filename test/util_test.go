@@ -1,9 +1,11 @@
-package main
+package test
 
 import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/IndianMax03/beroli-bot/internal/util"
 )
 
 const (
@@ -15,16 +17,16 @@ var (
 	cutStringLengthBoundaryValues = []int{
 		0,
 		1,
-		MAX_STRING_LENGHT - 1,
-		MAX_STRING_LENGHT,
-		MAX_STRING_LENGHT + 1,
-		MAX_STRING_LENGHT + MAX_STRING_LENGHT,
+		util.MAX_STRING_LENGHT - 1,
+		util.MAX_STRING_LENGHT,
+		util.MAX_STRING_LENGHT + 1,
+		util.MAX_STRING_LENGHT + util.MAX_STRING_LENGHT,
 	}
 	cutArrayLengthBoundaryValues = []int{
-		MAX_ARRAY_LENGHT + MAX_ARRAY_LENGHT,
-		MAX_ARRAY_LENGHT + 1,
-		MAX_ARRAY_LENGHT,
-		MAX_ARRAY_LENGHT - 1,
+		util.MAX_ARRAY_LENGHT + util.MAX_ARRAY_LENGHT,
+		util.MAX_ARRAY_LENGHT + 1,
+		util.MAX_ARRAY_LENGHT,
+		util.MAX_ARRAY_LENGHT - 1,
 		1,
 		0,
 	}
@@ -37,8 +39,8 @@ func genrateCasesCutString() []InputStringWantString {
 		input := RandStringWithSymbolsAndEmojis(cutStringLengthBoundaryValues[caseNum])
 		inputRunes := []rune(input)
 		want := input
-		if len(inputRunes) > MAX_STRING_LENGHT {
-			inputRunes = inputRunes[:MAX_STRING_LENGHT]
+		if len(inputRunes) > util.MAX_STRING_LENGHT {
+			inputRunes = inputRunes[:util.MAX_STRING_LENGHT]
 			want = string(inputRunes) + "..."
 		}
 		cases = append(cases, InputStringWantString{
@@ -74,11 +76,11 @@ func genrateCasesCutArrayOfString() []InputArrayOfStringWantString {
 		}
 		cutInput := []string{}
 		for i, s := range input {
-			if i == MAX_ARRAY_LENGHT {
+			if i == util.MAX_ARRAY_LENGHT {
 				cutInput = append(cutInput, "...")
 				break
 			}
-			cutInput = append(cutInput, CutString(s))
+			cutInput = append(cutInput, util.CutString(s))
 		}
 		want := strings.Join(cutInput[:], ", ")
 		cases = append(cases, InputArrayOfStringWantString{
@@ -99,7 +101,7 @@ func TestCutString(t *testing.T) {
 	for _, test := range tests {
 		name := fmt.Sprintf("CASE:'%s'->'%s'", test.Input, test.Want)
 		t.Run(name, func(t *testing.T) {
-			got := CutString(test.Input)
+			got := util.CutString(test.Input)
 			if got != test.Want {
 				t.Errorf("Got: '%s', Want '%s'", got, test.Want)
 			}
@@ -112,7 +114,7 @@ func TestCutArrayOfString(t *testing.T) {
 	for _, test := range tests {
 		name := fmt.Sprintf("CASE:len=%v->'%s'", len(test.Input), test.Want)
 		t.Run(name, func(t *testing.T) {
-			got := CutArrayOfString(test.Input)
+			got := util.CutArrayOfString(test.Input)
 			if got != test.Want {
 				t.Errorf("Got: '%s', Want '%s'", got, test.Want)
 			}

@@ -1,6 +1,8 @@
-package main
+package domain
 
-import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+import (
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+)
 
 var NumericKeyboard tgbotapi.ReplyKeyboardMarkup = tgbotapi.NewReplyKeyboard(
 	tgbotapi.NewKeyboardButtonRow(

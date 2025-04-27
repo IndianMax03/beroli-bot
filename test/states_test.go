@@ -1,27 +1,29 @@
-package main
+package test
 
 import (
 	"fmt"
 	"testing"
+
+	"github.com/IndianMax03/beroli-bot/internal/domain"
 )
 
 func generatePositiveCasesGetLocalizedStateDescription() []InputStringWantString {
 	cases := []InputStringWantString{
 		{
-			Input: NIL_STATE,
-			Want:  NIL_STATE_RU,
+			Input: domain.NIL_STATE,
+			Want:  domain.NIL_STATE_RU,
 		},
 		{
-			Input: CREATING_STATE,
-			Want:  CREATING_STATE_RU,
+			Input: domain.CREATING_STATE,
+			Want:  domain.CREATING_STATE_RU,
 		},
 		{
-			Input: DONE_STATE,
-			Want:  DONE_STATE_RU,
+			Input: domain.DONE_STATE,
+			Want:  domain.DONE_STATE_RU,
 		},
 		{
-			Input: CANCELED_STATE,
-			Want:  CANCELED_STATE_RU,
+			Input: domain.CANCELED_STATE,
+			Want:  domain.CANCELED_STATE_RU,
 		},
 	}
 
@@ -32,11 +34,11 @@ func generateNegativeCasesGetLocalizedStateDescription() []InputStringWantError 
 	cases := []InputStringWantError{
 		{
 			Input: "",
-			Error: ErrStateNotExists,
+			Error: domain.ErrStateNotExists,
 		},
 		{
 			Input: RandStringWithSymbolsAndEmojis(10),
-			Error: ErrStateNotExists,
+			Error: domain.ErrStateNotExists,
 		},
 	}
 
@@ -48,7 +50,7 @@ func TestGetLocalizedStateDescriptionPositive(t *testing.T) {
 	for _, test := range tests {
 		name := fmt.Sprintf("CASE:'%s'->'%s'", test.Input, test.Want)
 		t.Run(name, func(t *testing.T) {
-			got, err := GetLocalizedStateDescription(test.Input)
+			got, err := domain.GetLocalizedStateDescription(test.Input)
 			if err != nil {
 				t.Errorf("Got error: '%v', Want '%s'", err, test.Want)
 			} else if got != test.Want {
@@ -63,7 +65,7 @@ func TestGetLocalizedStateDescriptionNegative(t *testing.T) {
 	for _, test := range tests {
 		name := fmt.Sprintf("CASE:'%s'->'%v'", test.Input, test.Error)
 		t.Run(name, func(t *testing.T) {
-			_, err := GetLocalizedStateDescription(test.Input)
+			_, err := domain.GetLocalizedStateDescription(test.Input)
 			if err != test.Error {
 				t.Errorf("Got: error is nil, Want error '%v'", test.Error)
 			}

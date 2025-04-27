@@ -1,4 +1,4 @@
-package main
+package domain
 
 import (
 	"github.com/IndianMax03/yandex-tracker-go-client/v3/model"

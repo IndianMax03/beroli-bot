@@ -1,4 +1,4 @@
-package main
+package domain
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 
 	api "github.com/IndianMax03/yandex-tracker-go-client/v3"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	infra "github.com/IndianMax03/beroli-bot/internal/infra"
+	telegram "github.com/IndianMax03/beroli-bot/internal/telegram"
 	"resty.dev/v3"
 )
 
@@ -35,7 +37,7 @@ type Handler struct {
 	trackerClient YandexTrackerService
 }
 
-func NewHandler(repo *MongoRepository, trackerClient *api.Client) Receiver {
+func NewHandler(repo *infra.MongoRepository, trackerClient *api.Client) Receiver {
 	return Handler{
 		collection:    NewCollection(*repo),
 		trackerClient: trackerClient,
@@ -98,12 +100,12 @@ func (h Handler) done(ctx context.Context, username string) (string, error) {
 		return "", err
 	}
 
-	err = user.validateRequest()
+	err = user.ValidateRequest()
 	if err != nil {
 		return "", err
 	}
 
-	sendPreliminaryMessagesWithContext(ctx, "Я начал создание задачи, по готовности отпишусь.", nil)
+	SendPreliminaryMessagesWithContext(ctx, "Я начал создание задачи, по готовности отпишусь.", nil)
 
 	issueData, err := h.createTrackerIssue(dbCtx, user)
 	if err != nil {
@@ -317,11 +319,11 @@ func (h Handler) uploadAttachments(user *User) error {
 		var newAttachmentIDs []string
 		for _, fileID := range user.Issue.AttachmentIds {
 			fileConfig := tgbotapi.FileConfig{FileID: fileID}
-			file, err := getFileByConfig(&fileConfig)
+			file, err := telegram.GetFileByConfig(&fileConfig)
 			if err != nil {
 				return err
 			}
-			fileURL := getFileURLByPath(file.FilePath)
+			fileURL := telegram.GetFileURLByPath(file.FilePath)
 			resp, err := http.Get(fileURL)
 			if err != nil {
 				return err
@@ -345,11 +347,11 @@ func (h Handler) uploadDescriptionAttachments(user *User) error {
 		var newDescriptionAttachmentIDs []string
 		for _, fileID := range user.Issue.DescriptionAttachmentIds {
 			fileConfig := tgbotapi.FileConfig{FileID: fileID}
-			file, err := getFileByConfig(&fileConfig)
+			file, err := telegram.GetFileByConfig(&fileConfig)
 			if err != nil {
 				return err
 			}
-			fileURL := getFileURLByPath(file.FilePath)
+			fileURL := telegram.GetFileURLByPath(file.FilePath)
 			resp, err := http.Get(fileURL)
 			if err != nil {
 				return err

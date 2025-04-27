@@ -1,4 +1,4 @@
-package main
+package domain
 
 import (
 	"context"
@@ -6,21 +6,23 @@ import (
 	"github.com/IndianMax03/yandex-tracker-go-client/v3/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	global "github.com/IndianMax03/beroli-bot/internal/global"
+	infra "github.com/IndianMax03/beroli-bot/internal/infra"
 )
 
 type Collection struct {
-	collection MongoCollection
+	Collection MongoCollection
 }
 
-func NewCollection(repo MongoRepository) *Collection {
-	collection := repo.CreateCollection(MONGO_DB_NAME, MONGO_COLLECTION_NAME)
+func NewCollection(repo infra.MongoRepository) *Collection {
+	collection := repo.CreateCollection(global.MONGO_DB_NAME, global.MONGO_COLLECTION_NAME)
 	return &Collection{
-		collection: collection,
+		Collection: collection,
 	}
 }
 
 func (c *Collection) CreateUser(ctx context.Context, u *User) {
-	c.collection.InsertOne(ctx, u)
+	c.Collection.InsertOne(ctx, u)
 }
 
 func (c *Collection) UpdateUser(ctx context.Context, u *User) error {
@@ -29,7 +31,7 @@ func (c *Collection) UpdateUser(ctx context.Context, u *User) error {
 			"$eq": u.Username,
 		},
 	}
-	return c.collection.FindOneAndUpdate(ctx, filter, u).Err()
+	return c.Collection.FindOneAndUpdate(ctx, filter, u).Err()
 }
 
 func (c *Collection) ResetUser(ctx context.Context, username string) error {
@@ -48,7 +50,7 @@ func (c *Collection) GetUser(ctx context.Context, username string) (*User, error
 	}
 	var user User
 
-	err := c.collection.FindOne(ctx, filter).Decode(&user)
+	err := c.Collection.FindOne(ctx, filter).Decode(&user)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +64,7 @@ func (c *Collection) ExistsUser(ctx context.Context, username string) error {
 		},
 	}
 
-	return c.collection.FindOne(ctx, filter).Err()
+	return c.Collection.FindOne(ctx, filter).Err()
 }
 
 func (c *Collection) UpdateStateUser(ctx context.Context, username, state string) error {
@@ -74,7 +76,7 @@ func (c *Collection) UpdateStateUser(ctx context.Context, username, state string
 	update := bson.M{
 		"$set": bson.M{STATE_FIELD: state},
 	}
-	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+	return c.Collection.FindOneAndUpdate(ctx, filter, update).Err()
 }
 
 func (c *Collection) GetStateUser(ctx context.Context, username string) (string, error) {
@@ -89,7 +91,7 @@ func (c *Collection) GetStateUser(ctx context.Context, username string) (string,
 		},
 	}
 	var u User
-	err := c.collection.FindOne(ctx, filter, &opt).Decode(&u)
+	err := c.Collection.FindOne(ctx, filter, &opt).Decode(&u)
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +109,7 @@ func (c *Collection) ClearIssue(ctx context.Context, username string) error {
 			ISSUE_FIELD: NewDefaultIssue(),
 		},
 	}
-	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+	return c.Collection.FindOneAndUpdate(ctx, filter, update).Err()
 }
 
 func (c *Collection) AppendDataIssue(ctx context.Context, username string, data *Issue) error {
@@ -121,7 +123,7 @@ func (c *Collection) AppendDataIssue(ctx context.Context, username string, data 
 			ISSUES_FIELD: data,
 		},
 	}
-	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+	return c.Collection.FindOneAndUpdate(ctx, filter, update).Err()
 }
 
 func (c *Collection) GetIssues(ctx context.Context, username string) ([]Issue, error) {
@@ -136,7 +138,7 @@ func (c *Collection) GetIssues(ctx context.Context, username string) ([]Issue, e
 		},
 	}
 	var u User
-	err := c.collection.FindOne(ctx, filter, &opt).Decode(&u)
+	err := c.Collection.FindOne(ctx, filter, &opt).Decode(&u)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +158,7 @@ func (c *Collection) GetIssue(ctx context.Context, username string) (*model.Issu
 		},
 	}
 	var u User
-	err := c.collection.FindOne(ctx, filter, &opt).Decode(&u)
+	err := c.Collection.FindOne(ctx, filter, &opt).Decode(&u)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +177,7 @@ func (c *Collection) UpdateSummaryIssue(ctx context.Context, username, text stri
 			ISSUE_SUMMARY_FIELD: text,
 		},
 	}
-	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+	return c.Collection.FindOneAndUpdate(ctx, filter, update).Err()
 }
 
 func (c *Collection) UpdateDescriptionIssue(ctx context.Context, username, text string) error {
@@ -189,7 +191,7 @@ func (c *Collection) UpdateDescriptionIssue(ctx context.Context, username, text 
 			ISSUE_DESCRIPTION_FIELD: text,
 		},
 	}
-	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+	return c.Collection.FindOneAndUpdate(ctx, filter, update).Err()
 }
 
 func (c *Collection) AppendAttachmentIssue(ctx context.Context, username string, attachmentID string) error {
@@ -203,7 +205,7 @@ func (c *Collection) AppendAttachmentIssue(ctx context.Context, username string,
 			ISSUE_ATTACHMENTS_FIELD: attachmentID,
 		},
 	}
-	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+	return c.Collection.FindOneAndUpdate(ctx, filter, update).Err()
 }
 
 func (c *Collection) AppendDescriptionAttachmentIssue(ctx context.Context, username string, descriptionAttachmentID string) error {
@@ -217,7 +219,7 @@ func (c *Collection) AppendDescriptionAttachmentIssue(ctx context.Context, usern
 			ISSUE_DESCRIPTION_ATTACHMENTS_FIELD: descriptionAttachmentID,
 		},
 	}
-	return c.collection.FindOneAndUpdate(ctx, filter, update).Err()
+	return c.Collection.FindOneAndUpdate(ctx, filter, update).Err()
 }
 
 func (c *Collection) AppendTagIssue(ctx context.Context, username string, tags []string) error {
@@ -234,6 +236,6 @@ func (c *Collection) AppendTagIssue(ctx context.Context, username string, tags [
 		},
 	}
 
-	_, err := c.collection.UpdateOne(ctx, filter, update)
+	_, err := c.Collection.UpdateOne(ctx, filter, update)
 	return err
 }
