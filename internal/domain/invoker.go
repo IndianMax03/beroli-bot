@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	
 )
 
 var (
@@ -16,7 +15,6 @@ var (
 	ErrMultiplyTags   = errors.New("не могу распознать несколько тэгов в одном сообщении")
 	ErrUnknownTag     = errors.New("неизвестный тэг")
 )
-
 
 type Invoker struct {
 	receiver Receiver
@@ -56,7 +54,7 @@ func (i *Invoker) ExecuteCommand(ctx context.Context, username, text string, fil
 		return "", err
 	}
 
-	return cmd.execute(ctx, username, text, tag, fileID)
+	return cmd.Execute(ctx, username, text, tag, fileID)
 }
 
 func parseCommand(body string, i *Invoker) (cmd Command, text string, tag string, err error) {

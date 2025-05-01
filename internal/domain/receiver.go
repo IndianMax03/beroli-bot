@@ -8,10 +8,10 @@ import (
 	"regexp"
 	"strings"
 
-	api "github.com/IndianMax03/yandex-tracker-go-client/v3"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	infra "github.com/IndianMax03/beroli-bot/internal/infra"
 	telegram "github.com/IndianMax03/beroli-bot/internal/telegram"
+	api "github.com/IndianMax03/yandex-tracker-go-client/v3"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"resty.dev/v3"
 )
 
@@ -21,32 +21,35 @@ var (
 )
 
 type Receiver interface {
-	myIssues(string) (string, error)
-	createIssue(string, string, map[string]Command) (string, error)
-	done(context.Context, string) (string, error)
-	cancel(string) (string, error)
-	noCommand(string, string, string, tgbotapi.FileID) (string, error)
-	helpCommand(map[string]Command) (string, error)
-	stateCommand(string, map[string]Command) (string, error)
+	MyIssues(string) (string, error)
+	CreateIssue(string, string, map[string]Command) (string, error)
+	Done(context.Context, string) (string, error)
+	Cancel(string) (string, error)
+	NoCommand(string, string, string, tgbotapi.FileID) (string, error)
+	HelpCommand(map[string]Command) (string, error)
+	StateCommand(string, map[string]Command) (string, error)
 	ValidateState(string, string) error
 	ValidateAndInitUser(string) error
+	CreateTrackerIssue(dbCtx context.Context, user *User) (*Issue, error)
+	UploadAttachments(user *User) error
+	UploadDescriptionAttachments(user *User) error
 }
 
 type Handler struct {
-	collection    CollectionService
-	trackerClient YandexTrackerService
+	Collection    CollectionService
+	TrackerClient YandexTrackerService
 }
 
 func NewHandler(repo *infra.MongoRepository, trackerClient *api.Client) Receiver {
 	return Handler{
-		collection:    NewCollection(*repo),
-		trackerClient: trackerClient,
+		Collection:    NewCollection(*repo),
+		TrackerClient: trackerClient,
 	}
 }
 
-func (h Handler) myIssues(username string) (string, error) {
+func (h Handler) MyIssues(username string) (string, error) {
 	ctx := context.Background()
-	issues, err := h.collection.GetIssues(ctx, username)
+	issues, err := h.Collection.GetIssues(ctx, username)
 	if err != nil {
 		return "", err
 	}
@@ -63,14 +66,14 @@ func (h Handler) myIssues(username string) (string, error) {
 	return result, nil
 }
 
-func (h Handler) createIssue(username, text string, commandMap map[string]Command) (string, error) {
+func (h Handler) CreateIssue(username, text string, commandMap map[string]Command) (string, error) {
 	ctx := context.Background()
 
-	if err := h.collection.UpdateStateUser(ctx, username, CREATING_STATE); err != nil {
+	if err := h.Collection.UpdateStateUser(ctx, username, CREATING_STATE); err != nil {
 		return "", err
 	}
 
-	if err := h.collection.ClearIssue(ctx, username); err != nil {
+	if err := h.Collection.ClearIssue(ctx, username); err != nil {
 		return "", err
 	}
 
@@ -79,7 +82,7 @@ func (h Handler) createIssue(username, text string, commandMap map[string]Comman
 	b.WriteString("Теперь вы можете создавать задачу.\n\n")
 	b.WriteString("Используйте тэги для наполнения:\n")
 	b.WriteString("\n--- Наполнение задачи ---\n\n")
-	issue, err := h.collection.GetIssue(ctx, username)
+	issue, err := h.Collection.GetIssue(ctx, username)
 	if err != nil {
 		return "", err
 	}
@@ -92,10 +95,10 @@ func (h Handler) createIssue(username, text string, commandMap map[string]Comman
 	return b.String(), nil
 }
 
-func (h Handler) done(ctx context.Context, username string) (string, error) {
+func (h Handler) Done(ctx context.Context, username string) (string, error) {
 	dbCtx := context.Background()
 
-	user, err := h.collection.GetUser(dbCtx, username)
+	user, err := h.Collection.GetUser(dbCtx, username)
 	if err != nil {
 		return "", err
 	}
@@ -107,7 +110,7 @@ func (h Handler) done(ctx context.Context, username string) (string, error) {
 
 	SendPreliminaryMessagesWithContext(ctx, "Я начал создание задачи, по готовности отпишусь.", nil)
 
-	issueData, err := h.createTrackerIssue(dbCtx, user)
+	issueData, err := h.CreateTrackerIssue(dbCtx, user)
 	if err != nil {
 		return "", err
 	}
@@ -115,18 +118,18 @@ func (h Handler) done(ctx context.Context, username string) (string, error) {
 	return fmt.Sprintf("Задача успешно создана: %s", issueData.Link), nil
 }
 
-func (h Handler) cancel(username string) (string, error) {
+func (h Handler) Cancel(username string) (string, error) {
 	ctx := context.Background()
-	if err := h.collection.ClearIssue(ctx, username); err != nil {
+	if err := h.Collection.ClearIssue(ctx, username); err != nil {
 		return "", err
 	}
-	if err := h.collection.UpdateStateUser(ctx, username, CANCELED_STATE); err != nil {
+	if err := h.Collection.UpdateStateUser(ctx, username, CANCELED_STATE); err != nil {
 		return "", err
 	}
 	return "Создание задачи успешно отменено", nil
 }
 
-func (h Handler) noCommand(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+func (h Handler) NoCommand(username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
 	if tag == "" {
 		return "", ErrEmptyTag
 	}
@@ -135,18 +138,18 @@ func (h Handler) noCommand(username, text string, tag string, fileID tgbotapi.Fi
 
 	switch tag {
 	case ISSUE_SUMMARY_TAG:
-		err = h.collection.UpdateSummaryIssue(ctx, username, text)
+		err = h.Collection.UpdateSummaryIssue(ctx, username, text)
 	case ISSUE_DESCRIPTION_TAG:
-		err = h.collection.UpdateDescriptionIssue(ctx, username, text)
+		err = h.Collection.UpdateDescriptionIssue(ctx, username, text)
 	case ISSUE_ATTACHMENT_TAG:
 		if fileID != "" {
-			err = h.collection.AppendAttachmentIssue(ctx, username, string(fileID))
+			err = h.Collection.AppendAttachmentIssue(ctx, username, string(fileID))
 		} else {
 			err = ErrEmptyAttachment
 		}
 	case ISSUE_DESCRIPTION_ATTACHMENT_TAG:
 		if fileID != "" {
-			err = h.collection.AppendDescriptionAttachmentIssue(ctx, username, string(fileID))
+			err = h.Collection.AppendDescriptionAttachmentIssue(ctx, username, string(fileID))
 		} else {
 			err = ErrEmptyAttachment
 		}
@@ -162,7 +165,7 @@ func (h Handler) noCommand(username, text string, tag string, fileID tgbotapi.Fi
 				tags = append(tags, tag)
 			}
 		}
-		err = h.collection.AppendTagIssue(ctx, username, tags)
+		err = h.Collection.AppendTagIssue(ctx, username, tags)
 	}
 
 	if err != nil {
@@ -172,7 +175,7 @@ func (h Handler) noCommand(username, text string, tag string, fileID tgbotapi.Fi
 	return fmt.Sprintf("Успешно обновил %s", LocalizedTagsDescriptionMap[tag]), nil
 }
 
-func (h Handler) helpCommand(commandMap map[string]Command) (string, error) {
+func (h Handler) HelpCommand(commandMap map[string]Command) (string, error) {
 	var b strings.Builder
 	for name, cmd := range commandMap {
 		if name != "" {
@@ -186,9 +189,9 @@ func (h Handler) helpCommand(commandMap map[string]Command) (string, error) {
 	return result, nil
 }
 
-func (h Handler) stateCommand(username string, commandMap map[string]Command) (string, error) {
+func (h Handler) StateCommand(username string, commandMap map[string]Command) (string, error) {
 	ctx := context.Background()
-	state, err := h.collection.GetStateUser(ctx, username)
+	state, err := h.Collection.GetStateUser(ctx, username)
 	if err != nil {
 		return "", err
 	}
@@ -203,7 +206,7 @@ func (h Handler) stateCommand(username string, commandMap map[string]Command) (s
 	}
 	b.WriteString(fmt.Sprintf("Состояние: '%s' \n", stateDescr))
 
-	issues, err := h.collection.GetIssues(ctx, username)
+	issues, err := h.Collection.GetIssues(ctx, username)
 	if err != nil {
 		return "", err
 	}
@@ -220,7 +223,7 @@ func (h Handler) stateCommand(username string, commandMap map[string]Command) (s
 
 	if state == CREATING_STATE {
 		b.WriteString("\n--- Наполнение задачи ---\n\n")
-		issue, err := h.collection.GetIssue(ctx, username)
+		issue, err := h.Collection.GetIssue(ctx, username)
 		if err != nil {
 			return "", err
 		}
@@ -238,20 +241,20 @@ var (
 
 func (h Handler) ValidateAndInitUser(username string) error {
 	ctx := context.Background()
-	if err := h.collection.ExistsUser(ctx, username); err != nil {
+	if err := h.Collection.ExistsUser(ctx, username); err != nil {
 		user := User{
 			Username: username,
 			State:    NIL_STATE,
 			Issues:   []Issue{},
 		}
-		h.collection.CreateUser(ctx, &user)
+		h.Collection.CreateUser(ctx, &user)
 	}
 	return nil
 }
 
 func (h Handler) ValidateState(username, cmdName string) error {
 	ctx := context.Background()
-	state, err := h.collection.GetStateUser(ctx, username)
+	state, err := h.Collection.GetStateUser(ctx, username)
 	if err != nil {
 		return err
 	}
@@ -274,19 +277,19 @@ func (h Handler) ValidateState(username, cmdName string) error {
 	return nil
 }
 
-func (h Handler) createTrackerIssue(dbCtx context.Context, user *User) (*Issue, error) {
+func (h Handler) CreateTrackerIssue(dbCtx context.Context, user *User) (*Issue, error) {
 
-	err := h.uploadAttachments(user)
+	err := h.UploadAttachments(user)
 	if err != nil {
 		return nil, err
 	}
 
-	err = h.uploadDescriptionAttachments(user)
+	err = h.UploadDescriptionAttachments(user)
 	if err != nil {
 		return nil, err
 	}
 
-	created, err := h.trackerClient.CreateIssue(user.Issue)
+	created, err := h.TrackerClient.CreateIssue(user.Issue)
 	if err != nil {
 		return nil, err
 	}
@@ -296,17 +299,17 @@ func (h Handler) createTrackerIssue(dbCtx context.Context, user *User) (*Issue, 
 		Link: NewIssueLink(created.Key),
 	}
 
-	err = h.collection.AppendDataIssue(dbCtx, user.Username, &issueData)
+	err = h.Collection.AppendDataIssue(dbCtx, user.Username, &issueData)
 	if err != nil {
 		return nil, err
 	}
 
-	err = h.collection.ClearIssue(dbCtx, user.Username)
+	err = h.Collection.ClearIssue(dbCtx, user.Username)
 	if err != nil {
 		return nil, err
 	}
 
-	err = h.collection.UpdateStateUser(dbCtx, user.Username, DONE_STATE)
+	err = h.Collection.UpdateStateUser(dbCtx, user.Username, DONE_STATE)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +317,7 @@ func (h Handler) createTrackerIssue(dbCtx context.Context, user *User) (*Issue, 
 	return &issueData, nil
 }
 
-func (h Handler) uploadAttachments(user *User) error {
+func (h Handler) UploadAttachments(user *User) error {
 	if len(user.Issue.AttachmentIds) > 0 {
 		var newAttachmentIDs []string
 		for _, fileID := range user.Issue.AttachmentIds {
@@ -328,7 +331,7 @@ func (h Handler) uploadAttachments(user *User) error {
 			if err != nil {
 				return err
 			}
-			res, err := h.trackerClient.UploadTemporaryAttachment(&resty.MultipartField{
+			res, err := h.TrackerClient.UploadTemporaryAttachment(&resty.MultipartField{
 				Reader:   resp.Body,
 				FileName: strings.Split(file.FilePath, "/")[1],
 			})
@@ -342,7 +345,7 @@ func (h Handler) uploadAttachments(user *User) error {
 	return nil
 }
 
-func (h Handler) uploadDescriptionAttachments(user *User) error {
+func (h Handler) UploadDescriptionAttachments(user *User) error {
 	if len(user.Issue.DescriptionAttachmentIds) > 0 {
 		var newDescriptionAttachmentIDs []string
 		for _, fileID := range user.Issue.DescriptionAttachmentIds {
@@ -357,7 +360,7 @@ func (h Handler) uploadDescriptionAttachments(user *User) error {
 				return err
 			}
 			filename := strings.Split(file.FilePath, "/")[1]
-			res, err := h.trackerClient.UploadTemporaryAttachment(&resty.MultipartField{
+			res, err := h.TrackerClient.UploadTemporaryAttachment(&resty.MultipartField{
 				Reader:   resp.Body,
 				FileName: filename,
 			})

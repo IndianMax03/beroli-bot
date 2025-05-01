@@ -104,7 +104,7 @@ func NewStateCommand(r Receiver, commandMap map[string]Command) *StateCommand {
 }
 
 type Command interface {
-	execute(context.Context, string, string, string, tgbotapi.FileID) (string, error)
+	Execute(context.Context, string, string, string, tgbotapi.FileID) (string, error)
 	GetName() string
 	GetDescription() string
 }
@@ -160,30 +160,30 @@ func (c *concreteCommand) GetDescription() string {
 	return fmt.Sprintf("%s -- %s", c.commandName, c.commandDescription)
 }
 
-func (mIC *MyIssuesCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
-	return mIC.receiver.myIssues(username)
+func (mIC *MyIssuesCommand) Execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+	return mIC.receiver.MyIssues(username)
 }
 
-func (cIC *CreateIssueCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
-	return cIC.receiver.createIssue(username, text, cIC.commandMap)
+func (cIC *CreateIssueCommand) Execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+	return cIC.receiver.CreateIssue(username, text, cIC.commandMap)
 }
 
-func (dC *DoneCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
-	return dC.receiver.done(ctx, username)
+func (dC *DoneCommand) Execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+	return dC.receiver.Done(ctx, username)
 }
 
-func (cC *CancelCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
-	return cC.receiver.cancel(username)
+func (cC *CancelCommand) Execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+	return cC.receiver.Cancel(username)
 }
 
-func (nC *NilCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
-	return nC.receiver.noCommand(username, text, tag, fileID)
+func (nC *NilCommand) Execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+	return nC.receiver.NoCommand(username, text, tag, fileID)
 }
 
-func (hC *HelpCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
-	return hC.receiver.helpCommand(hC.commandMap)
+func (hC *HelpCommand) Execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+	return hC.receiver.HelpCommand(hC.commandMap)
 }
 
-func (sC *StateCommand) execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
-	return sC.receiver.stateCommand(username, sC.commandMap)
+func (sC *StateCommand) Execute(ctx context.Context, username, text string, tag string, fileID tgbotapi.FileID) (string, error) {
+	return sC.receiver.StateCommand(username, sC.commandMap)
 }
