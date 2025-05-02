@@ -20,21 +20,6 @@ var (
 	ErrEmptyAttachment = errors.New("вложение не представлено")
 )
 
-type Receiver interface {
-	MyIssues(string) (string, error)
-	CreateIssue(string, string, map[string]Command) (string, error)
-	Done(context.Context, string) (string, error)
-	Cancel(string) (string, error)
-	NoCommand(string, string, string, tgbotapi.FileID) (string, error)
-	HelpCommand(map[string]Command) (string, error)
-	StateCommand(string, map[string]Command) (string, error)
-	ValidateState(string, string) error
-	ValidateAndInitUser(string) error
-	CreateTrackerIssue(dbCtx context.Context, user *User) (*Issue, error)
-	UploadAttachments(user *User) error
-	UploadDescriptionAttachments(user *User) error
-}
-
 type Handler struct {
 	Collection    CollectionService
 	TrackerClient YandexTrackerService

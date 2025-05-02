@@ -17,8 +17,8 @@ var (
 )
 
 type Invoker struct {
-	receiver Receiver
-	commands map[string]Command
+	Receiver Receiver
+	Commands map[string]Command
 }
 
 func NewInvoker(r Receiver) *Invoker {
@@ -32,24 +32,24 @@ func NewInvoker(r Receiver) *Invoker {
 	commandMap[STATE_COMMAND] = NewStateCommand(r, commandMap)
 	commandMap[HELP_COMMAND] = NewHelpCommand(r, commandMap)
 	return &Invoker{
-		receiver: r,
-		commands: commandMap,
+		Receiver: r,
+		Commands: commandMap,
 	}
 }
 
 func (i *Invoker) ExecuteCommand(ctx context.Context, username, text string, fileID tgbotapi.FileID) (string, error) {
 
-	cmd, text, tag, err := parseCommand(text, i)
+	cmd, text, tag, err := i.ParseCommand(text)
 	if err != nil {
 		return "", err
 	}
 
-	err = i.receiver.ValidateAndInitUser(username)
+	err = i.Receiver.ValidateAndInitUser(username)
 	if err != nil {
 		return "", err
 	}
 
-	err = i.receiver.ValidateState(username, cmd.GetName())
+	err = i.Receiver.ValidateState(username, cmd.GetName())
 	if err != nil {
 		return "", err
 	}
@@ -57,8 +57,9 @@ func (i *Invoker) ExecuteCommand(ctx context.Context, username, text string, fil
 	return cmd.Execute(ctx, username, text, tag, fileID)
 }
 
-func parseCommand(body string, i *Invoker) (cmd Command, text string, tag string, err error) {
+func (i *Invoker) ParseCommand(body string) (cmd Command, text string, tag string, err error) {
 	var b strings.Builder
+	lines := len(strings.Split(body, "\n"))
 	for line := range strings.SplitSeq(body, "\n") {
 		it := 0
 		for word := range strings.SplitSeq(line, " ") {
@@ -73,7 +74,7 @@ func parseCommand(body string, i *Invoker) (cmd Command, text string, tag string
 				tag = trimmedWord
 			} else if strings.HasPrefix(word, "/") && cmd == nil {
 				var ok bool
-				cmd, ok = i.commands[word]
+				cmd, ok = i.Commands[word]
 				if !ok {
 					return nil, "", "", ErrUnknownCommand
 				}
@@ -81,17 +82,17 @@ func parseCommand(body string, i *Invoker) (cmd Command, text string, tag string
 				if it > 0 {
 					b.WriteString(" ")
 				}
-				if word == "" {
-					b.WriteString("\n")
-				} else {
-					b.WriteString(word)
-				}
+				b.WriteString(word)
 				it++
 			}
 		}
+		lines--
+		if lines > 0 && b.Len() != 0 {
+			b.WriteString("\n")
+		}
 	}
 	if cmd == nil {
-		cmd = i.commands[NIL_COMMAND]
+		cmd = i.Commands[NIL_COMMAND]
 	}
 	text = b.String()
 	return
