@@ -50,8 +50,6 @@ func (*stubCommandStruct) GetDescription() string {
 	return "stubDescription"
 }
 
-// TODO: mockYandexTrackerService := mocks.NewMockYandexTrackerService(ctrl)
-
 func TestReceiverMyIssuesPositiveNonEmptyIssues(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
