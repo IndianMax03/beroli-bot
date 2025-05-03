@@ -141,7 +141,6 @@ func TestReceiverCreateIssueNegativeUpdateStateUser(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockCollectionService := mocks.NewMockCollectionService(ctrl)
-	// mockYandexTrackerService := mocks.NewMockYandexTrackerService(ctrl)
 
 	mockCollectionService.
 		EXPECT().
@@ -161,7 +160,6 @@ func TestReceiverCreateIssueNegativeClearIssue(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockCollectionService := mocks.NewMockCollectionService(ctrl)
-	// mockYandexTrackerService := mocks.NewMockYandexTrackerService(ctrl)
 
 	mockCollectionService.
 		EXPECT().
@@ -186,7 +184,6 @@ func TestReceiverCreateIssueNegativeGetIssue(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockCollectionService := mocks.NewMockCollectionService(ctrl)
-	// mockYandexTrackerService := mocks.NewMockYandexTrackerService(ctrl)
 
 	mockCollectionService.
 		EXPECT().
