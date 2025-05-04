@@ -5,23 +5,13 @@ import (
 	"fmt"
 	"sync"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	util "github.com/IndianMax03/beroli-bot/internal/util"
-	telegram "github.com/IndianMax03/beroli-bot/internal/telegram"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 var Inv *Invoker
 var usersLockMap map[string]chan string = make(map[string]chan string)
 var mapLock sync.Mutex
-
-func sendMessage(chatID int64, messageID int, result string) {
-	msg := tgbotapi.NewMessage(chatID, result)
-	msg.ReplyMarkup = NumericKeyboard
-	msg.ReplyToMessageID = messageID
-	if _, err := telegram.Bot.Send(msg); err != nil {
-		panic(err)
-	}
-}
 
 func SendPreliminaryMessagesWithContext(ctx context.Context, result string, restultErr error) {
 	go func() {
@@ -43,7 +33,7 @@ func SendPreliminaryMessagesWithContext(ctx context.Context, result string, rest
 	}()
 }
 
-func PreliminaryMessagesDaemon() {
+func PreliminaryMessagesDaemon(sender MessageSender) {
 	var result string
 	for pm := range preliminaryQueue {
 		go func() {
@@ -52,12 +42,12 @@ func PreliminaryMessagesDaemon() {
 			} else {
 				result = pm.result
 			}
-			sendMessage(pm.chatID, pm.messageID, result)
+			sender.SendMessage(pm.chatID, pm.messageID, result)
 		}()
 	}
 }
 
-func RunUpdate(update tgbotapi.Update) {
+func RunUpdate(update tgbotapi.Update, sender MessageSender) {
 	if update.Message.Text == "" && update.Message.Caption == "" {
 		return
 	}
@@ -81,5 +71,8 @@ func RunUpdate(update tgbotapi.Update) {
 	if err != nil {
 		result = fmt.Sprintf("Ошибка: %v", err)
 	}
-	sendMessage(update.Message.Chat.ID, update.Message.MessageID, result)
+
+	if err = sender.SendMessage(update.Message.Chat.ID, update.Message.MessageID, result); err != nil {
+		panic(err)
+	}
 }

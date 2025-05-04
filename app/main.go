@@ -38,12 +38,14 @@ func main() {
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
+	sender := domain.NewTelegramMessageSender()
+
 	updates := bot.GetUpdatesChan(updateConfig)
 
-	go domain.PreliminaryMessagesDaemon()
+	go domain.PreliminaryMessagesDaemon(sender)
 
 	for update := range updates {
-		go domain.RunUpdate(update)
+		go domain.RunUpdate(update, sender)
 	}
 
 }
