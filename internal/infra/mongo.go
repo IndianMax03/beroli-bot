@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	connectionTimeout = 2 * time.Second
-	pingTimeout       = 1 * time.Second
+	connectionTimeout = 5 * time.Second
+	pingTimeout       = 5 * time.Second
 )
 
 type MongoRepository struct {

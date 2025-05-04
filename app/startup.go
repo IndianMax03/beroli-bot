@@ -11,10 +11,7 @@ import (
 )
 
 func loadEnvs() error {
-	err := env.Load()
-	if err != nil {
-		return err
-	}
+	env.Load()
 	global.TELEGRAM_TOKEN = os.Getenv("TELEGRAM_TOKEN")
 	global.YANDEX_API_TOKEN = os.Getenv("YANDEX_API_TOKEN")
 	global.YANDEX_ORGANIZATION_ID = os.Getenv("YANDEX_ORGANIZATION_ID")
