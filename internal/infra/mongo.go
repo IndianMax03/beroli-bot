@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	global "github.com/IndianMax03/beroli-bot/internal/global"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	global "github.com/IndianMax03/beroli-bot/internal/global"
 )
 
 const (
@@ -30,6 +30,7 @@ func NewConnection(ctx context.Context) (*MongoRepository, error) {
 			Password: global.MONGO_PASSWORD,
 		})
 	}
+	clientOptions.SetMaxPoolSize(0)
 
 	mongoClient, err := mongo.Connect(connectCtx, clientOptions)
 	if err != nil {
