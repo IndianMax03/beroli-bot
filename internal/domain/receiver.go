@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	infra "github.com/IndianMax03/beroli-bot/internal/infra"
 	telegram "github.com/IndianMax03/beroli-bot/internal/telegram"
@@ -23,12 +24,14 @@ var (
 type Handler struct {
 	Collection    CollectionService
 	TrackerClient YandexTrackerService
+	rateLimiter   *time.Ticker
 }
 
 func NewHandler(repo *infra.MongoRepository, trackerClient *api.Client) Receiver {
 	return Handler{
 		Collection:    NewCollection(*repo),
 		TrackerClient: trackerClient,
+		rateLimiter:   time.NewTicker(100 * time.Millisecond),
 	}
 }
 
@@ -95,12 +98,23 @@ func (h Handler) Done(ctx context.Context, username string) (string, error) {
 
 	SendPreliminaryMessagesWithContext(ctx, "Я начал создание задачи, по готовности отпишусь.", nil)
 
-	issueData, err := h.CreateTrackerIssue(dbCtx, user)
-	if err != nil {
-		return "", err
-	}
+	const maxRetries = 10
 
-	return fmt.Sprintf("Задача успешно создана: %s", issueData.Link), nil
+	for i := range maxRetries {
+		<-h.rateLimiter.C
+
+		issueData, err := h.CreateTrackerIssue(dbCtx, user)
+		if err == nil {
+			return fmt.Sprintf("Задача успешно создана: %s", issueData.Link), nil
+		}
+
+		if strings.Contains(err.Error(), "429") {
+			return "", err
+		}
+
+		time.Sleep(time.Second * time.Duration(i+1))
+	}
+	return "", err
 }
 
 func (h Handler) Cancel(username string) (string, error) {
